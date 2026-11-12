@@ -18,6 +18,10 @@ else()
         ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/GLAD/include/)
 endif()
 
+target_sources(IceBrickEngine PRIVATE
+    Core/Window.cpp
+)
+
 target_include_directories(IceBrickEngine
     PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
 )

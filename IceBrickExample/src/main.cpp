@@ -1,5 +1,6 @@
 #include <iostream>
 #include "Renderer/rhi.hpp"
+#include "Core/Window.hpp"
 
 #include <glm/glm.hpp>
 #include <spdlog/spdlog.h>
@@ -12,9 +13,9 @@
 
 int main(int argc, char** argv)
 {
-    GLFWwindow* window = IceBrick::RHI::InitWindow(1280, 720, "IceBrick");
-
-    if(!window) return -1;
+    auto window = IceBrick::Window(1280, 720, "IceBrick");
+    
+    IceBrick::RHI::Initialize(window.GetNativeHandle());
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -25,10 +26,10 @@ int main(int argc, char** argv)
 
     ImGui::StyleColorsDark();
 
-    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplGlfw_InitForOpenGL(static_cast<GLFWwindow*>(window.GetNativeHandle()), true);
     ImGui_ImplOpenGL3_Init("#version 460 core");
 
-    while(!glfwWindowShouldClose(window))
+    while(!window.ShouldClose())
     {
         glfwPollEvents();
 
@@ -48,13 +49,10 @@ int main(int argc, char** argv)
         IceBrick::RHI::ClearScreen(0.1f, 0.11f, 0.12f);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-        glfwSwapBuffers(window);
+        window.SwapBuffers();
     }
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
-
-    IceBrick::RHI::Shutdown(window);
-
 }
