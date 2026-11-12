@@ -1,7 +1,12 @@
 #pragma once
 
-#include <string_view>
-namespace ib::Renderer
+struct GLFWwindow;
+
+namespace IceBrick::RHI
 {        
-    void Test(std::string_view str);
+    GLFWwindow* InitWindow(int width, int height, const char* title);
+
+    void ClearScreen(float r, float g, float b);
+
+    void Shutdown(GLFWwindow* window);
 }

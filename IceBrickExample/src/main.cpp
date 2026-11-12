@@ -1,8 +1,60 @@
 #include <iostream>
 #include "Renderer/rhi.hpp"
 
+#include <glm/glm.hpp>
+#include <spdlog/spdlog.h>
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
+
+#include <GLFW/glfw3.h>
+
+
 int main(int argc, char** argv)
 {
-    std::cout << "TEST" << std::endl;
-    ib::Renderer::Test("ABCD");
+    GLFWwindow* window = IceBrick::RHI::InitWindow(1280, 720, "IceBrick");
+
+    if(!window) return -1;
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+
+    ImGui::StyleColorsDark();
+
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init("#version 460 core");
+
+    while(!glfwWindowShouldClose(window))
+    {
+        glfwPollEvents();
+
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        ImGui::DockSpaceOverViewport(ImGui::GetMainViewport()->ID);
+
+        if(ImGui::Begin("Test"))
+        {
+            ImGui::Text("TEST");
+        }
+        ImGui::End();
+
+        ImGui::Render();
+        IceBrick::RHI::ClearScreen(0.1f, 0.11f, 0.12f);
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        glfwSwapBuffers(window);
+    }
+
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+
+    IceBrick::RHI::Shutdown(window);
+
 }
