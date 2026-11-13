@@ -11,8 +11,9 @@ else()
     message(STATUS "IceBrick RHI: Compiling OpenGL 4.6 Backend")
 
     target_sources(IceBrickEngine PRIVATE
-        Vendor/OpenGL/rhi_gl.cpp
         Vendor/GLAD/src/gl.c
+        Vendor/OpenGL/rhi_gl.cpp
+        Vendor/OpenGL/Texture_gl.cpp
     )
     target_include_directories(IceBrickEngine PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/GLAD/include/)

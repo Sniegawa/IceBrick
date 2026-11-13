@@ -1,9 +1,10 @@
-#include <iostream>
 #include "Core/InputManager.hpp"
 #include "Core/WindowInput.hpp"
-#include "Renderer/rhi.hpp"
 #include "Core/Window.hpp"
+#include "Renderer/TextureDescription.hpp"
+#include "Renderer/rhi.hpp"
 
+#include <cstdint>
 #include <glm/glm.hpp>
 #include <spdlog/spdlog.h>
 #include <imgui.h>
@@ -31,6 +32,23 @@ int main(int argc, char** argv)
     ImGui_ImplGlfw_InitForOpenGL(static_cast<GLFWwindow*>(window.GetNativeHandle()), true);
     ImGui_ImplOpenGL3_Init("#version 460 core");
 
+    IceBrick::RHI::TextureDescription texDescription;
+    texDescription.width = 4;
+    texDescription.height = 4;
+    texDescription.type = IceBrick::RHI::TextureType::Texture2D;
+    texDescription.format = IceBrick::RHI::TextureFormat::RGBA8_UNORM;
+    texDescription.generateMips = false;
+
+    uint32_t TEXDATA[16] = { 
+    0xFF0000FF, 0xFF00FF00, 0xFF0000FF, 0xFF00FF00,
+    0xFF00FF00, 0xFF0000FF, 0xFF00FF00, 0xFF0000FF,
+    0xFF0000FF, 0xFF00FF00, 0xFF0000FF, 0xFF00FF00,
+    0xFF00FF00, 0xFF0000FF, 0xFF00FF00, 0xFF0000FF
+};    auto tex = IceBrick::RHI::CreateTexture(texDescription);
+    tex->SetData(TEXDATA, sizeof(TEXDATA) );
+
+    unsigned int TextureHandle = static_cast<unsigned int>(reinterpret_cast<uintptr_t>(tex->GetNativeHandle()));
+
     while(!window.ShouldClose())
     {
         glfwPollEvents();
@@ -46,6 +64,7 @@ int main(int argc, char** argv)
         if(ImGui::Begin("Test"))
         {
             ImGui::Text("TEST");
+            ImGui::Image((ImTextureID)(intptr_t)TextureHandle,ImVec2(64,64));
         }
         ImGui::End();
 

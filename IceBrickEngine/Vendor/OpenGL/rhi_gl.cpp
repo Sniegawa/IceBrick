@@ -1,5 +1,7 @@
+#include "Vendor/OpenGL/Texture_gl.hpp"
 #include <Renderer/rhi.hpp>
 
+#include <memory>
 #include <spdlog/spdlog.h>
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
@@ -28,5 +30,9 @@ namespace IceBrick::RHI
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }
 
+    std::shared_ptr<Texture> CreateTexture(const TextureDescription& description)
+    {
+        return std::make_shared<GLTexture>(description);
+    }
 };
 
