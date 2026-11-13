@@ -1,4 +1,6 @@
 #include <iostream>
+#include "Core/InputManager.hpp"
+#include "Core/WindowInput.hpp"
 #include "Renderer/rhi.hpp"
 #include "Core/Window.hpp"
 
@@ -32,7 +34,9 @@ int main(int argc, char** argv)
     while(!window.ShouldClose())
     {
         glfwPollEvents();
-
+       
+        if(IceBrick::InputManager::IsKeyPressed(IceBrick::Key::Space))
+            spdlog::info("SPACE");
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();

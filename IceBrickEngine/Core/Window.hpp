@@ -2,8 +2,13 @@
 
 struct GLFWwindow;
 
+
+
 namespace IceBrick
 {
+    
+
+
     class Window
     {
     public:

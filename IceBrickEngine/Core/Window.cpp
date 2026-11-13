@@ -1,4 +1,5 @@
 #include "Core/Window.hpp"
+#include "Core/InputManager.hpp"
 
 #include <GLFW/glfw3.h>
 #include <spdlog/spdlog.h>
@@ -27,6 +28,8 @@ namespace IceBrick
             glfwTerminate();
             return;
         }
+
+        glfwSetKeyCallback(m_NativeHandle, &InputManager::GlfwKeyCallback);
     }
 
     Window::~Window()

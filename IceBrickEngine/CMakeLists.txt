@@ -20,6 +20,8 @@ endif()
 
 target_sources(IceBrickEngine PRIVATE
     Core/Window.cpp
+    Core/WindowInput.cpp
+    Core/InputManager.cpp
 )
 
 target_include_directories(IceBrickEngine
