@@ -1,8 +1,10 @@
 #include "Core/InputManager.hpp"
 #include "Core/WindowInput.hpp"
 #include "Core/Window.hpp"
-#include "Renderer/TextureDescription.hpp"
 #include "Renderer/rhi.hpp"
+#include "Renderer/TextureDescription.hpp"
+#include "Renderer/Texture.hpp"
+#include "Renderer/StorageBuffer.hpp"
 
 #include <cstdint>
 #include <glm/glm.hpp>
@@ -51,6 +53,22 @@ int main(int argc, char** argv)
     tex->SetData(TEXDATA, sizeof(TEXDATA) );
 
     unsigned int TextureHandle = static_cast<unsigned int>(reinterpret_cast<uintptr_t>(tex->GetNativeHandle()));
+
+    IceBrick::RHI::StorageBufferDescription bufDescription;
+    bufDescription.sizeInBytes = sizeof(TEXDATA); // - 1; // To test critical warning
+    bufDescription.usage = IceBrick::RHI::BufferUsage::Static;
+
+    auto Buffer = IceBrick::RHI::StorageBuffer::Create(bufDescription);
+
+    Buffer->SetData(TEXDATA, sizeof(TEXDATA));
+
+
+    uint32_t ReadData;
+
+    Buffer->GetData(&ReadData, sizeof(uint32_t), sizeof(uint32_t) * 2);
+
+    spdlog::info("ReadData    {}",ReadData);
+    spdlog::info("TEXDATA[0]  {}",TEXDATA[2]);
 
     while(!window.ShouldClose())
     {

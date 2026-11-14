@@ -14,6 +14,7 @@ else()
         Vendor/GLAD/src/gl.c
         Vendor/OpenGL/rhi_gl.cpp
         Vendor/OpenGL/Texture_gl.cpp
+        Vendor/OpenGL/StorageBuffer_gl.cpp
     )
     target_include_directories(IceBrickEngine PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/Vendor/GLAD/include/)

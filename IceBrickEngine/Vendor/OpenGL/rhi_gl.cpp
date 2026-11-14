@@ -1,5 +1,9 @@
-#include "Vendor/OpenGL/Texture_gl.hpp"
 #include <Renderer/rhi.hpp>
+#include "Renderer/Texture.hpp"
+#include "Renderer/StorageBuffer.hpp"
+#include "Vendor/OpenGL/StorageBuffer_gl.hpp"
+#include "Vendor/OpenGL/Texture_gl.hpp"
+
 
 #include <memory>
 #include <spdlog/spdlog.h>
@@ -33,6 +37,11 @@ namespace IceBrick::RHI
     std::shared_ptr<Texture> Texture::Create(const TextureDescription& description)
     {
         return std::make_shared<GLTexture>(description);
+    }
+
+    std::shared_ptr<StorageBuffer> StorageBuffer::Create(const StorageBufferDescription& description)
+    {
+        return std::make_shared<GLStorageBuffer>(description);
     }
 };
 
