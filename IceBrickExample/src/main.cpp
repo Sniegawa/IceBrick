@@ -47,7 +47,7 @@ int main(int argc, char** argv)
     0xFF00FF00, 0xFF0000FF, 0xFF00FF00, 0xFF0000FF,
     0xFF0000FF, 0xFF00FF00, 0xFF0000FF, 0xFF00FF00,
     0xFF00FF00, 0xFF0000FF, 0xFF00FF00, 0xFF0000FF
-};    auto tex = IceBrick::RHI::CreateTexture(texDescription);
+};    auto tex = IceBrick::RHI::Texture::Create(texDescription);
     tex->SetData(TEXDATA, sizeof(TEXDATA) );
 
     unsigned int TextureHandle = static_cast<unsigned int>(reinterpret_cast<uintptr_t>(tex->GetNativeHandle()));

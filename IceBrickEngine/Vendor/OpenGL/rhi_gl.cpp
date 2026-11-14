@@ -30,7 +30,7 @@ namespace IceBrick::RHI
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }
 
-    std::shared_ptr<Texture> CreateTexture(const TextureDescription& description)
+    std::shared_ptr<Texture> Texture::Create(const TextureDescription& description)
     {
         return std::make_shared<GLTexture>(description);
     }

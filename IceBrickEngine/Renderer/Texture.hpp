@@ -2,6 +2,8 @@
 
 #include "Renderer/TextureDescription.hpp"
 
+#include <memory>
+
 namespace IceBrick::RHI
 {
 
@@ -22,8 +24,7 @@ namespace IceBrick::RHI
         
         virtual void* GetNativeHandle() = 0;
 
-    private:
-
+        static std::shared_ptr<Texture> Create(const TextureDescription& description);
     };
 
 };
