@@ -30,13 +30,15 @@ namespace IceBrick::RHI
             glTextureStorage3D(m_ID, mipLevels, internalFormat, m_Description.width, m_Description.height, m_Description.depth);
         }
 
-        // Sampler Defaults (Change to be somewhere else later)
-        glTextureParameteri(m_ID, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTextureParameteri(m_ID, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTextureParameteri(m_ID, GL_TEXTURE_WRAP_R, GL_REPEAT);
+        GLenum wrap = TranslateWrapToGL(m_Description.wrap);
+        
+        glTextureParameteri(m_ID, GL_TEXTURE_WRAP_S, wrap);
+        glTextureParameteri(m_ID, GL_TEXTURE_WRAP_T, wrap);
+        if(m_Description.type == TextureType::Texture3D)
+            glTextureParameteri(m_ID, GL_TEXTURE_WRAP_R, wrap);
 
-        glTextureParameteri(m_ID, GL_TEXTURE_MIN_FILTER, m_Description.generateMips ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
-        glTextureParameteri(m_ID, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTextureParameteri(m_ID, GL_TEXTURE_MIN_FILTER, TranslateFilterToGL(m_Description.filter, m_Description.generateMips)); 
+        glTextureParameteri(m_ID, GL_TEXTURE_MAG_FILTER, TranslateFilterToGL(m_Description.filter, false));
 
     }
 

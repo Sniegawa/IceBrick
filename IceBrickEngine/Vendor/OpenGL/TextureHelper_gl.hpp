@@ -42,4 +42,27 @@ namespace IceBrick::RHI
         return GL_UNSIGNED_BYTE;
     }
 
+    inline GLenum TranslateFilterToGL(TextureFilter filter, bool isMipmapped)
+    {
+        if(filter == TextureFilter::Nearest)
+            return isMipmapped ? GL_NEAREST_MIPMAP_NEAREST : GL_NEAREST;
+        else if(filter == TextureFilter::Linear)
+            return isMipmapped ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR;
+        else
+            spdlog::error("Unknown TextureFormat in TranslateFilterToGL");
+        return GL_LINEAR;
+    }
+
+    inline GLenum TranslateWrapToGL(TextureWrap wrap)
+    {
+        switch(wrap)
+        {
+            case TextureWrap::Repeat:
+                return GL_REPEAT;
+            case TextureWrap::ClampToEdge:
+                return GL_CLAMP_TO_EDGE;
+        }
+        spdlog::error("Unknown TextureWrap in TranslateWrapToGL");
+        return GL_REPEAT;
+    }
 };

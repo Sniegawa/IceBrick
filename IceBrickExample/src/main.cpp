@@ -33,10 +33,13 @@ int main(int argc, char** argv)
     ImGui_ImplOpenGL3_Init("#version 460 core");
 
     IceBrick::RHI::TextureDescription texDescription;
+    texDescription.usage = IceBrick::RHI::TextureUsage::Sampled;
     texDescription.width = 4;
     texDescription.height = 4;
     texDescription.type = IceBrick::RHI::TextureType::Texture2D;
     texDescription.format = IceBrick::RHI::TextureFormat::RGBA8_UNORM;
+    texDescription.filter = IceBrick::RHI::TextureFilter::Nearest; // Imgui ignores this
+    texDescription.wrap = IceBrick::RHI::TextureWrap::Repeat;
     texDescription.generateMips = false;
 
     uint32_t TEXDATA[16] = { 

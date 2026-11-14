@@ -41,6 +41,18 @@ namespace IceBrick::RHI
         Texture3D
     };
 
+    enum class TextureFilter
+    {
+        Nearest,
+        Linear
+    };
+
+    enum class TextureWrap
+    {
+        Repeat,
+        ClampToEdge
+    };
+
     struct TextureDescription
     {
         uint32_t width = 1;
@@ -49,6 +61,8 @@ namespace IceBrick::RHI
         TextureType type = TextureType::Texture2D;
         TextureFormat format = TextureFormat::RGBA8_UNORM;
         TextureUsage usage = TextureUsage::Sampled;
+        TextureFilter filter = TextureFilter::Linear;
+        TextureWrap wrap = TextureWrap::Repeat;
         bool generateMips = false;
     };
 
