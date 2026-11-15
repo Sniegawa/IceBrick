@@ -32,6 +32,11 @@ namespace IceBrick::RHI
 
         uint32_t mipLevels = 1;
     };
+
+    struct GLPipelineNode : public GLNodeBase
+    {
+        // no extra data
+    };
     
     class GLRenderDevice final : public RenderDevice
     {
@@ -64,6 +69,12 @@ namespace IceBrick::RHI
         virtual void BindTexture(uint32_t set, uint32_t binding, TextureHandle handle)override;
         virtual void BindImage(uint32_t set, uint32_t binding, TextureHandle handle, ImageAccess access)override;
 
+        // Pipelines
+        virtual PipelineHandle CreateComputePipeline(std::string_view computeShaderSource) override;
+        virtual void BindComputePipeline(PipelineHandle handle) override;
+        virtual void DispatchCompute(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) override;
+        virtual void InsertImageMemoryBarrier() override;
+
 
 
 
@@ -76,6 +87,9 @@ namespace IceBrick::RHI
 
         std::vector<GLTextureNode> m_TexturePool;
         std::vector<uint32_t> m_FreeTextureIndices;
+
+        std::vector<GLPipelineNode> m_PipelinePool;
+        std::vector<uint32_t> m_FreePipelineIndices;
 
     private:
         inline GLBufferNode& GetBufferNode(BufferHandle handle)
@@ -109,6 +123,23 @@ namespace IceBrick::RHI
 
         #endif
             return m_TexturePool[index];
+        }
+
+        inline GLPipelineNode& GetPipelineNode(PipelineHandle handle)
+        {
+            uint32_t index = handle.GetIndex();
+        #ifndef NDEBUG
+            if(
+                index >= m_PipelinePool.size() || 
+                m_PipelinePool[index].generation != handle.GetGeneration() ||
+                !m_PipelinePool[index].active)
+            {
+                spdlog::warn("Attempted to get an invalid or stale PipelineHandle");
+                std::abort();
+            }
+
+        #endif
+            return m_PipelinePool[index];
         }
     };
 };

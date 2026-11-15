@@ -1,0 +1,23 @@
+#version 450 core
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(rgba8, binding = 0) uniform writeonly image2D u_OutputImage;
+
+void main()
+{
+    ivec2 pixelCoords = ivec2(gl_GlobalInvocationID.xy);
+    
+    ivec2 imgSize = imageSize(u_OutputImage);
+
+    if (pixelCoords.x >= imgSize.x || pixelCoords.y >= imgSize.y)
+    {
+        return;
+    }
+
+    vec2 uv = vec2(pixelCoords) / vec2(imgSize);
+
+    vec4 color = vec4(uv.x, uv.y, 0.0, 1.0);
+    
+    imageStore(u_OutputImage, pixelCoords, color);
+}

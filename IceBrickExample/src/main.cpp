@@ -2,8 +2,12 @@
 #include "Core/WindowInput.hpp"
 #include "Core/Window.hpp"
 #include "RHI/rhi.hpp"
+#include "RHI/rhi_handles.hpp"
+#include "RHI/rhi_pipeline_resources.hpp"
+#include "RHI/rhi_types.hpp"
 
 #include <cstdint>
+#include <fstream>
 #include <glm/glm.hpp>
 #include <spdlog/spdlog.h>
 #include <imgui.h>
@@ -11,7 +15,30 @@
 #include <imgui_impl_opengl3.h>
 
 #include <GLFW/glfw3.h>
+#include <string>
+#include <filesystem>
 
+
+std::string ReadShaderFile(const std::filesystem::path& filepath)
+{
+    std::ifstream file(filepath, std::ios::ate | std::ios::binary);
+        
+    if (!file.is_open()) {
+            spdlog::error("Failed to open shader file: {}", filepath.string());
+            return "";
+        }
+
+        // Grab the size, allocate the string, and rewind to the start
+        size_t fileSize = static_cast<size_t>(file.tellg());
+        std::string buffer(fileSize, '\0');
+        file.seekg(0);
+        
+        // Read the entire file in one blocking system call
+        file.read(buffer.data(), fileSize);
+        file.close();
+
+        return buffer;
+}
 
 int main(int argc, char** argv)
 {
@@ -70,12 +97,40 @@ int main(int argc, char** argv)
     spdlog::info("ReadData    {}",ReadData);
     spdlog::info("TEXDATA[0]  {}",TEXDATA[2]);
 
+
+    // Pipeline tests
+
+    std::string compSource = ReadShaderFile("../../../IceBrickExample/src/uv.comp");
+    auto uvPipeline = device->CreateComputePipeline(compSource);
+
+    IceBrick::RHI::TextureDescription uvDescription;
+    uvDescription.width = 1920;
+    uvDescription.height = 1080;
+    uvDescription.format = IceBrick::RHI::TextureFormat::RGBA8_UNORM;
+    uvDescription.type = IceBrick::RHI::TextureType::Texture2D;
+    uvDescription.usage = IceBrick::RHI::TextureUsage::Storage;
+
+    auto uvTexture = device->CreateTexture(uvDescription);
+    
+
+    IceBrick::RHI::PipelineResources resources;
+    resources.SetStorageImage(0, uvTexture, IceBrick::RHI::ImageAccess::ReadOnly);
+
     while(!window.ShouldClose())
     {
         glfwPollEvents();
        
         if(IceBrick::InputManager::IsKeyPressed(IceBrick::Key::Space))
             spdlog::info("SPACE");
+
+        resources.Commit(device);
+        device->BindComputePipeline(uvPipeline);
+
+        device->DispatchCompute(static_cast<uint32_t>((1920.0 + 15.0) / 16.0), static_cast<uint32_t>((1080.0 + 15.0) / 16.0),1);
+        
+        device->InsertImageMemoryBarrier();
+
+
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();

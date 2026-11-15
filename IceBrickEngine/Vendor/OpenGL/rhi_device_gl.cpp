@@ -325,6 +325,77 @@ namespace IceBrick::RHI
     }
 
 
+    PipelineHandle GLRenderDevice::CreateComputePipeline(std::string_view computeShaderSource)
+    {
+        GLuint shader = glCreateShader(GL_COMPUTE_SHADER);
+        const char* src = computeShaderSource.data();
+        glShaderSource(shader, 1, &src, nullptr);
+        glCompileShader(shader);
+
+        GLint success;
+        glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+        if(!success)
+        {
+            char infoLog[512];
+            glGetShaderInfoLog(shader, 512, nullptr, infoLog);
+            spdlog::error("Compute Shader Compilation Failed:\n{}",infoLog);
+            glDeleteShader(shader);
+            return PipelineHandle{}; // Return invalid Handle
+        }
+
+        GLuint program = glCreateProgram();
+        glAttachShader(program,shader);
+        glLinkProgram(program);
+
+        glGetProgramiv(program, GL_LINK_STATUS, &success);
+        if(!success)
+        {
+            char infoLog[512];
+            glGetProgramInfoLog(shader, 512, nullptr, infoLog);
+            spdlog::error("Compute Shader Linking failed: {}",infoLog);
+            return PipelineHandle{};
+        }
+
+        glDeleteShader(shader);
+
+        uint32_t slotIndex = 0;
+        if(!m_FreePipelineIndices.empty())
+        {
+            slotIndex = m_FreePipelineIndices.back();
+            m_FreePipelineIndices.pop_back();
+        }
+        else 
+        {
+            slotIndex = static_cast<uint32_t>(m_PipelinePool.size());
+            m_PipelinePool.emplace_back();
+        }
+
+        auto& node = m_PipelinePool[slotIndex];
+        node.active = true;
+        node.glID = program;
+
+        PipelineHandle handle;
+        handle.id = (static_cast<uint64_t>(node.generation) << 32) | slotIndex;
+
+        return handle;
+    }
+
+    void GLRenderDevice::BindComputePipeline(PipelineHandle handle)
+    {
+        auto& node = GetPipelineNode(handle);
+        glUseProgram(node.glID);
+    }
+
+    void GLRenderDevice::DispatchCompute(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ)
+    {
+        glDispatchCompute(groupCountX,groupCountY,groupCountZ);
+    }
+
+    void GLRenderDevice::InsertImageMemoryBarrier()
+    {
+        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
+    }
+
 
 
     void GLRenderDevice::ClearScreen(float r, float g, float b)

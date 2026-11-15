@@ -20,4 +20,12 @@ namespace IceBrick::RHI
 
     };
 
+    struct PipelineHandle
+    {
+        uint64_t id;
+
+        uint32_t GetIndex() const { return static_cast<uint32_t>(id & 0xFFFFFFFF); }
+        uint32_t GetGeneration() const { return static_cast<uint32_t>(id >> 32); }
+    };
+
 };
