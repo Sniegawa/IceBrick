@@ -2,7 +2,9 @@
 
 #include "RHI/rhi_types.hpp"
 #include "RHI/rhi_handles.hpp"
+#include <span>
 #include <string_view>
+#include <ranges>
 namespace IceBrick::RHI
 {
     class RenderDevice
@@ -44,5 +46,24 @@ namespace IceBrick::RHI
 
 
         virtual void ClearScreen(float r, float g, float b) = 0;
+
+        template<typename T>
+        void Upload(BufferHandle handle, std::span<const T> data, uint32_t byteOffset = 0)
+        {
+            SetBufferData(handle, data.data(), data.size_bytes());
+        }
+
+        template<typename T>
+        requires (!std::ranges::range<T>)
+        void Upload(BufferHandle handle, const T& data, uint32_t byteOffset = 0)
+        {
+            SetBufferData(handle, &data, sizeof(T));
+        }
+
+        template<typename T>
+        void Download(BufferHandle handle, std::span<T> outData, uint32_t byteOffset = 0)
+        {
+            GetBufferData(handle, outData.data(), static_cast<uint32_t>(outData.size_bytes()), byteOffset);
+        }
     };
 };

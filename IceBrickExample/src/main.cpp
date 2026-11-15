@@ -6,6 +6,7 @@
 #include "RHI/rhi_pipeline_resources.hpp"
 #include "RHI/rhi_types.hpp"
 
+#include <array>
 #include <cstdint>
 #include <fstream>
 #include <glm/glm.hpp>
@@ -18,6 +19,12 @@
 #include <string>
 #include <filesystem>
 
+struct TestStruct
+{
+    uint32_t a = 0;
+    bool b = false;
+    uint64_t c = 1;
+};
 
 std::string ReadShaderFile(const std::filesystem::path& filepath)
 {
@@ -97,6 +104,21 @@ int main(int argc, char** argv)
     spdlog::info("ReadData    {}",ReadData);
     spdlog::info("TEXDATA[0]  {}",TEXDATA[2]);
 
+
+    std::vector<TestStruct> testData;
+    testData.push_back(TestStruct());
+    testData.push_back({1, true, 0});
+    testData.push_back(TestStruct());
+
+    bufDescription.sizeInBytes = testData.size() * sizeof(TestStruct);
+
+    auto testStructBuffer = device->CreateBuffer(bufDescription);
+    device->Upload<TestStruct>(testStructBuffer,testData);
+
+    std::array<TestStruct,3> testRead;
+    device->Download<TestStruct>(testStructBuffer, testRead);
+
+    spdlog::info("Test struct readback: {} {} {}",testRead[1].a,testRead[1].b,testRead[1].c);
 
     // Pipeline tests
 
