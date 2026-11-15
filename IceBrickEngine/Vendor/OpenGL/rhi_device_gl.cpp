@@ -336,9 +336,9 @@ namespace IceBrick::RHI
         glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
         if(!success)
         {
-            char infoLog[512];
+            char infoLog[512] = {0};
             glGetShaderInfoLog(shader, 512, nullptr, infoLog);
-            spdlog::error("Compute Shader Compilation Failed:\n{}",infoLog);
+            spdlog::error("Compute Shader Compilation Failed:\n{}",static_cast<const char*>(infoLog));
             glDeleteShader(shader);
             return PipelineHandle{}; // Return invalid Handle
         }
@@ -350,9 +350,9 @@ namespace IceBrick::RHI
         glGetProgramiv(program, GL_LINK_STATUS, &success);
         if(!success)
         {
-            char infoLog[512];
-            glGetProgramInfoLog(shader, 512, nullptr, infoLog);
-            spdlog::error("Compute Shader Linking failed: {}",infoLog);
+            char infoLog[512] = {0};
+            glGetProgramInfoLog(program, 512, nullptr, infoLog);
+            spdlog::error("Compute Shader Linking failed: {}",static_cast<const char*>(infoLog));
             return PipelineHandle{};
         }
 

@@ -114,7 +114,7 @@ int main(int argc, char** argv)
     
 
     IceBrick::RHI::PipelineResources resources;
-    resources.SetStorageImage(0, uvTexture, IceBrick::RHI::ImageAccess::ReadOnly);
+    resources.SetStorageImage(0, uvTexture, IceBrick::RHI::ImageAccess::WriteOnly);
 
     while(!window.ShouldClose())
     {
