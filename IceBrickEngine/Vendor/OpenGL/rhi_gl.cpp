@@ -1,6 +1,6 @@
-#include <Renderer/rhi.hpp>
-#include "Renderer/Texture.hpp"
-#include "Renderer/StorageBuffer.hpp"
+#include "RHI/rhi.hpp"
+#include "RHI/Texture.hpp"
+#include "RHI/StorageBuffer.hpp"
 #include "Vendor/OpenGL/StorageBuffer_gl.hpp"
 #include "Vendor/OpenGL/Texture_gl.hpp"
 

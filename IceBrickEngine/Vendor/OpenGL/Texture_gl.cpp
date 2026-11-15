@@ -2,7 +2,7 @@
 
 #include "glad/gl.h"
 
-#include "Renderer/TextureDescription.hpp"
+#include "RHI/TextureDescription.hpp"
 #include "Vendor/OpenGL/TextureHelper_gl.hpp"
 #include <GL/gl.h>
 #include <algorithm>

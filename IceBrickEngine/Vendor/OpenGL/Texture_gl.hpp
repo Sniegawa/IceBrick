@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Renderer/Texture.hpp"
-#include "Renderer/TextureDescription.hpp"
+#include "RHI/Texture.hpp"
+#include "RHI/TextureDescription.hpp"
 
 namespace IceBrick::RHI
 {

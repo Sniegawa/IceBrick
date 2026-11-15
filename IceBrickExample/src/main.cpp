@@ -1,10 +1,10 @@
 #include "Core/InputManager.hpp"
 #include "Core/WindowInput.hpp"
 #include "Core/Window.hpp"
-#include "Renderer/rhi.hpp"
-#include "Renderer/TextureDescription.hpp"
-#include "Renderer/Texture.hpp"
-#include "Renderer/StorageBuffer.hpp"
+#include "RHI/rhi.hpp"
+#include "RHI/TextureDescription.hpp"
+#include "RHI/Texture.hpp"
+#include "RHI/StorageBuffer.hpp"
 
 #include <cstdint>
 #include <glm/glm.hpp>

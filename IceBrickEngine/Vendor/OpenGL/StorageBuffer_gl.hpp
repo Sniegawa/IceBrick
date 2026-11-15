@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Renderer/StorageBuffer.hpp"
+#include "RHI/StorageBuffer.hpp"
 
 namespace IceBrick::RHI
 {

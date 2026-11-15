@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Renderer/TextureDescription.hpp"
+#include "RHI/TextureDescription.hpp"
 
 #include <memory>
 
