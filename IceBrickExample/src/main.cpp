@@ -2,9 +2,6 @@
 #include "Core/WindowInput.hpp"
 #include "Core/Window.hpp"
 #include "RHI/rhi.hpp"
-#include "RHI/TextureDescription.hpp"
-#include "RHI/Texture.hpp"
-#include "RHI/StorageBuffer.hpp"
 
 #include <cstdint>
 #include <glm/glm.hpp>
@@ -20,7 +17,7 @@ int main(int argc, char** argv)
 {
     auto window = IceBrick::Window(1280, 720, "IceBrick");
     
-    IceBrick::RHI::Initialize(window.GetNativeHandle());
+    auto device = IceBrick::RHI::InitializeDevice(window.GetNativeHandle());
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -49,23 +46,26 @@ int main(int argc, char** argv)
     0xFF00FF00, 0xFF0000FF, 0xFF00FF00, 0xFF0000FF,
     0xFF0000FF, 0xFF00FF00, 0xFF0000FF, 0xFF00FF00,
     0xFF00FF00, 0xFF0000FF, 0xFF00FF00, 0xFF0000FF
-};    auto tex = IceBrick::RHI::Texture::Create(texDescription);
-    tex->SetData(TEXDATA, sizeof(TEXDATA) );
+    };
+    auto texHandle = device->CreateTexture(texDescription);
+    
+    device->SetTextureData(texHandle, TEXDATA, sizeof(TEXDATA));
+    
+    unsigned int TextureHandle = static_cast<unsigned int>(reinterpret_cast<uintptr_t>(device->GetTextureNativeHandle(texHandle)));
 
-    unsigned int TextureHandle = static_cast<unsigned int>(reinterpret_cast<uintptr_t>(tex->GetNativeHandle()));
-
-    IceBrick::RHI::StorageBufferDescription bufDescription;
+    IceBrick::RHI::BufferDescription bufDescription;
     bufDescription.sizeInBytes = sizeof(TEXDATA); // - 1; // To test critical warning
-    bufDescription.usage = IceBrick::RHI::BufferUsage::Static;
+    bufDescription.usage = IceBrick::RHI::BufferUsage::StorageBuffer;
+    bufDescription.memoryAccess = IceBrick::RHI::BufferMemoryAccess::CpuToGpu;
 
-    auto Buffer = IceBrick::RHI::StorageBuffer::Create(bufDescription);
+    auto BufferHandle = device->CreateBuffer(bufDescription);
 
-    Buffer->SetData(TEXDATA, sizeof(TEXDATA));
+    device->SetBufferData(BufferHandle,TEXDATA, sizeof(TEXDATA));
 
 
     uint32_t ReadData;
 
-    Buffer->GetData(&ReadData, sizeof(uint32_t), sizeof(uint32_t) * 2);
+    device->GetBufferData(BufferHandle,&ReadData, sizeof(uint32_t), sizeof(uint32_t) * 2);
 
     spdlog::info("ReadData    {}",ReadData);
     spdlog::info("TEXDATA[0]  {}",TEXDATA[2]);
@@ -90,7 +90,7 @@ int main(int argc, char** argv)
         ImGui::End();
 
         ImGui::Render();
-        IceBrick::RHI::ClearScreen(0.1f, 0.11f, 0.12f);
+        device->ClearScreen(0.1f, 0.11f, 0.12f);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         window.SwapBuffers();

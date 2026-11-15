@@ -1,6 +1,7 @@
 #pragma once
 
-#include "RHI/TextureDescription.hpp"
+
+#include "RHI/rhi_types.hpp"
 #include <glad/gl.h>
 #include <spdlog/spdlog.h>
 
@@ -64,5 +65,19 @@ namespace IceBrick::RHI
         }
         spdlog::error("Unknown TextureWrap in TranslateWrapToGL");
         return GL_REPEAT;
+    }
+
+    constexpr uint32_t GetBytesPerPixel(TextureFormat format)
+    {
+        switch(format)
+        {
+            case TextureFormat::R32_UINT:           return 4;
+            case TextureFormat::RGBA8_UNORM:        return 4;
+            case TextureFormat::RGBA16_FLOAT:       return 8;
+            case TextureFormat::RGBA32_FLOAT:       return 16;
+            default:
+                spdlog::error("Unknown TextureFormat in GetBytesPerPixel!");
+                return 0;
+        }
     }
 };

@@ -1,9 +1,44 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 
 namespace IceBrick::RHI
 {
+    enum class BufferUsage : uint32_t
+    {
+        UniformBuffer = 1 << 0,
+        StorageBuffer = 1 << 1,
+        TransferSrc = 1 << 2,
+        TransferDst = 1 << 3,
+        IndexBuffer = 1 << 4,
+        VertexBuffer = 1 << 5,
+    };
+
+    inline BufferUsage operator|(BufferUsage a, BufferUsage b)
+    {
+        return static_cast<BufferUsage>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
+    }
+
+    enum class BufferMemoryAccess : uint8_t
+    {
+        // No read or write from cpu directly
+        GpuOnly,
+        // Dynamic cpu to gpu usefull for writing every frame
+        CpuToGpu,
+        // Readback
+        GpuToCpu
+    };
+
+    struct BufferDescription
+    {
+        size_t sizeInBytes = 0;
+        BufferUsage usage = BufferUsage::StorageBuffer;
+        BufferMemoryAccess memoryAccess = BufferMemoryAccess::CpuToGpu;
+    };
+
+
+    // ============ TEXTURE ==============
     enum class TextureUsage : uint8_t
     {
         None = 0,
@@ -72,4 +107,5 @@ namespace IceBrick::RHI
         WriteOnly,
         ReadWrite
     };
+
 };

@@ -1,8 +1,9 @@
 #pragma once
 
+#include "RHI/rhi_device.hpp"
 namespace IceBrick::RHI
 {        
-    void Initialize(void* NativeWindowHandle);
+    RenderDevice* InitializeDevice(void* NativeWindowHandle);
     
-    void ClearScreen(float r, float g, float b);
+    RenderDevice* GetDevice();
 }
