@@ -56,6 +56,16 @@ namespace IceBrick::RHI
         virtual void SetTextureData(TextureHandle handle, const void* data, uint32_t size) override;
 
         virtual void GetBufferData(BufferHandle handle, void* outData, uint32_t size, uint32_t offset = 0) override;
+    
+        // Data Binding
+        virtual void BindUniformBuffer(uint32_t set, uint32_t binding, BufferHandle handle)override;
+        virtual void BindStorageBuffer(uint32_t set, uint32_t binding, BufferHandle handle)override;
+
+        virtual void BindTexture(uint32_t set, uint32_t binding, TextureHandle handle)override;
+        virtual void BindImage(uint32_t set, uint32_t binding, TextureHandle handle, ImageAccess access)override;
+
+
+
 
         virtual void ClearScreen(float r, float g, float b) override;
 

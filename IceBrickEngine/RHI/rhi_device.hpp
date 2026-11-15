@@ -27,6 +27,13 @@ namespace IceBrick::RHI
 
         virtual void GetBufferData(BufferHandle handle, void* outData, uint32_t size, uint32_t offset = 0) = 0;
 
+        // Data Binding
+        virtual void BindUniformBuffer(uint32_t set, uint32_t binding, BufferHandle handle) = 0;
+        virtual void BindStorageBuffer(uint32_t set, uint32_t binding, BufferHandle handle) = 0;
+
+        virtual void BindTexture(uint32_t set, uint32_t binding, TextureHandle handle) = 0;
+        virtual void BindImage(uint32_t set, uint32_t binding, TextureHandle handle, ImageAccess access) = 0;
+
         virtual void ClearScreen(float r, float g, float b) = 0;
     };
 };

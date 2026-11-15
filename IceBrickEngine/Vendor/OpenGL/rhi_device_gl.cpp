@@ -1,6 +1,7 @@
 #include "rhi_device_gl.hpp"
 
 #include <cstdint>
+#include <functional>
 #include <glad/gl.h>
 #include "RHI/rhi_handles.hpp"
 #include "RHI/rhi_types.hpp"
@@ -260,6 +261,71 @@ namespace IceBrick::RHI
 
         glGetNamedBufferSubData(node.glID, offset, size, outData);
     }
+
+    // TODO : MOVE SOMEWHERE ELSE
+    GLenum TranslateImageAccessToGL(ImageAccess access)
+    {
+        switch(access) {
+            case ImageAccess::ReadOnly: return GL_READ_ONLY;
+            case ImageAccess::WriteOnly: return GL_WRITE_ONLY;
+            case ImageAccess::ReadWrite: return GL_READ_WRITE;
+        }
+        spdlog::warn("Unknown ImageAccess in TranslateImageAccessToGL");
+        return GL_READ_WRITE;
+    }
+
+    constexpr uint32_t MAX_BINDINGS_PER_SET = 16;
+
+    constexpr uint32_t CalculateFlatIndex(uint32_t set, uint32_t binding)
+    {
+        return (set * MAX_BINDINGS_PER_SET) + binding;
+    }
+
+    void GLRenderDevice::BindUniformBuffer(uint32_t set, uint32_t binding, BufferHandle handle)
+    {
+        auto& node = GetBufferNode(handle);
+        uint32_t flatIndex = CalculateFlatIndex(set, binding); 
+
+        glBindBufferBase(GL_UNIFORM_BUFFER,flatIndex,node.glID);
+    }
+
+    void GLRenderDevice::BindStorageBuffer(uint32_t set, uint32_t binding, BufferHandle handle)
+    {
+        auto& node = GetBufferNode(handle);
+        uint32_t flatIndex = CalculateFlatIndex(set, binding);
+
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, flatIndex, node.glID);
+    }
+
+    void GLRenderDevice::BindTexture(uint32_t set, uint32_t binding, TextureHandle handle)
+    {
+        auto& node = GetTextureNode(handle);
+        uint32_t flatIndex = CalculateFlatIndex(set, binding);
+
+        glBindTextureUnit(flatIndex, node.glID);
+    }
+
+    void GLRenderDevice::BindImage(uint32_t set, uint32_t binding, TextureHandle handle, ImageAccess access)
+    {
+        auto& node = GetTextureNode(handle);
+        uint32_t flatIndex = CalculateFlatIndex(set, binding);
+
+        GLenum glAccess = TranslateImageAccessToGL(access);
+        GLenum internalFormat = TranslateInternalFormatToGL(node.format);
+
+        glBindImageTexture(
+                flatIndex,
+                node.glID,
+                0,
+                (node.type == TextureType::Texture2D ? GL_FALSE : GL_TRUE),
+                0,
+                glAccess,
+                internalFormat
+        );
+    }
+
+
+
 
     void GLRenderDevice::ClearScreen(float r, float g, float b)
     {
