@@ -13,6 +13,10 @@ elseif(MSVC)
     add_compile_options(/W4 /wd4100)
 endif()
 
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    #add_compile_options(-g -gdwarf-4)
+endif()
+
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/bin")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/bin")
@@ -36,6 +40,12 @@ FetchContent_MakeAvailable(glfw)
 
 FetchContent_Declare(glm GIT_REPOSITORY https://github.com/g-truc/glm.git GIT_TAG 1.0.3)
 FetchContent_MakeAvailable(glm)
+
+set(FASTGLTF_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(FASTGLTF_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(FASTGLTF_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(fastgltf GIT_REPOSITORY https://github.com/spnda/fastgltf.git GIT_TAG v1.0.1)
+FetchContent_MakeAvailable(fastgltf)
 
 FetchContent_Declare(spdlog GIT_REPOSITORY https://github.com/gabime/spdlog.git GIT_TAG v1.13.0)
 FetchContent_MakeAvailable(spdlog)
