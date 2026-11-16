@@ -62,4 +62,13 @@ namespace IceBrick::RHI
         return g_Device.get();
     }
 
+    void ShutdownDevice()
+    {
+        if(!g_Device)
+        {
+            spdlog::error("Tried to shutdown a device that doesnt exist");
+            return;
+        }
+        g_Device.reset();
+    }
 };

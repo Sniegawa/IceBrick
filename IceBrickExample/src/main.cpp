@@ -12,7 +12,6 @@
 #include <fstream>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <random>
 #include <spdlog/spdlog.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -21,6 +20,9 @@
 #include <GLFW/glfw3.h>
 #include <string>
 #include <filesystem>
+
+
+#include "Camera.hpp"
 
 using namespace IceBrick;
 
@@ -57,11 +59,21 @@ struct Voxel
     uint32_t mat;
 };
 
+
+Camera camera;
+bool isCameraActive = false;
+
 struct SceneData
 {
     glm::vec4 SunDir;
     glm::vec4 BackgroundColor;
+
+    glm::vec4 camPos;
+    glm::vec4 camFront;
+    glm::vec4 camUp;
+    glm::vec4 camRight;
 };
+
 
 int main(int argc, char** argv)
 {
@@ -119,35 +131,46 @@ int main(int argc, char** argv)
 
     spdlog::info("Test struct readback: {} {} {}",testRead[1].a,testRead[1].b,testRead[1].c);
 
-    constexpr int GRID_SIZE = 32;
+    constexpr int GRID_SIZE = 128;
     std::vector<Voxel> voxelGrid(GRID_SIZE * GRID_SIZE * GRID_SIZE,{0});
 
-    int center = GRID_SIZE / 2;
-    float radius = 10.0f;
+    float center = GRID_SIZE / 2.0f;
+    float majorRadius = 40.0f; 
+    float minorRadius = 10.0f;
 
-    std::mt19937 r;
-
-    r.seed(0);
-
-    for(int z = 0; z < GRID_SIZE; z++)
-    {
-        for(int y = 0; y < GRID_SIZE; y++)
-        {
-            for(int x = 0; x < GRID_SIZE; x++)
-            {
+    for (int z = 0; z < GRID_SIZE; ++z) {
+        for (int y = 0; y < GRID_SIZE; ++y) {
+            for (int x = 0; x < GRID_SIZE; ++x) {
+            
                 float dx = x - center;
-                float dy = y - center;
+                float dy = y - center; 
                 float dz = z - center;
-
-                if(std::sqrt(dx*dx + dy*dy + dz*dz) <= radius)
-                {
+            
+                float distXZ = std::sqrt(dx*dx + dz*dz);
+            
+                float distToTube = distXZ - majorRadius;
+            
+                if ((distToTube * distToTube + dy * dy) <= (minorRadius * minorRadius)) {
+                
                     int flatIndex = z * (GRID_SIZE * GRID_SIZE) + y * GRID_SIZE + x;
-                    voxelGrid[flatIndex].mat = r()%4 + 1;
+                
+                    float angle = std::atan2(dz, dx);
+                    uint32_t matID = (static_cast<int>(angle * 4.0f) % 3 == 0) ? 1 : 2; 
+                
+                    voxelGrid[flatIndex].mat = matID; 
+                }
+
+                if(y == 0)
+                { 
+                    int flatIndex = z * (GRID_SIZE * GRID_SIZE) + y * GRID_SIZE + x;
+
+                    uint32_t matID = (x+z) % 2 + 3;
+
+                    voxelGrid[flatIndex].mat = matID;
                 }
             }
         }
     }
-
     RHI::BufferDescription VoxelBufdesc;
     VoxelBufdesc.sizeInBytes = sizeof(Voxel) * voxelGrid.size();
     VoxelBufdesc.memoryAccess = RHI::BufferMemoryAccess::CpuToGpu;
@@ -175,6 +198,8 @@ int main(int argc, char** argv)
     outTexture.format = RHI::TextureFormat::RGBA8_UNORM;
     outTexture.type = RHI::TextureType::Texture2D;
     outTexture.usage = RHI::TextureUsage::Storage;
+    outTexture.filter = RHI::TextureFilter::Linear;
+    outTexture.generateMips = false;
 
     auto outTextureHandle = device->CreateTexture(outTexture);
 
@@ -189,13 +214,16 @@ int main(int argc, char** argv)
     unsigned int VoxelRenderNative = static_cast<unsigned int>(reinterpret_cast<uintptr_t>(device->GetTextureNativeHandle(outTextureHandle)));
 
 
+    float deltaTime = 0.0f;
+    float lastFrame = 0.0f;
     while(!window.ShouldClose())
     {
+        float currentFrame = static_cast<float>(glfwGetTime());
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+
         glfwPollEvents();
        
-        if(InputManager::IsKeyPressed(Key::Space))
-            spdlog::info("SPACE");
-
         voxelPipelineResources.Commit(device);
         device->BindComputePipeline(VoxelPipeline);
 
@@ -217,21 +245,55 @@ int main(int argc, char** argv)
 
         if(ImGui::Begin("Parameters"))
         {
-            ImGui::DragFloat3("Sun direction", glm::value_ptr(sceneData.SunDir),0.05f,-1.0f,1.0f);
-            ImGui::ColorPicker3("Background color", glm::value_ptr(sceneData.BackgroundColor));
-
-            if(ImGui::Button("Upload data"))
-            {
+            bool flag = false;
+            if(ImGui::DragFloat3("Sun direction", glm::value_ptr(sceneData.SunDir),0.05f,-1.0f,1.0f)) flag = true;
+            if(ImGui::ColorPicker3("Background color", glm::value_ptr(sceneData.BackgroundColor))) flag = true;
+            if(flag)
                 device->Upload<SceneData>(SceneDataBuffer,sceneData);
+
+        }
+        ImGui::End();
+
+        if(ImGui::Begin("Viewport"))
+        {
+            ImVec2 viewportSize = ImGui::GetContentRegionAvail();
+
+
+            ImGui::Image((ImTextureID)(intptr_t)VoxelRenderNative, viewportSize, ImVec2(0, 1), ImVec2(1, 0));
+
+            if(ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+            {
+                if(!isCameraActive)
+                {
+                    isCameraActive = true;
+                    window.DisableCursor();
+                }
             }
         }
         ImGui::End();
 
-        if(ImGui::Begin("Output"))
+        if(ImGui::Begin("Stats"))
         {
-            ImGui::Image((ImTextureID)(intptr_t)VoxelRenderNative,ImVec2(1920,1080));
+            ImGui::Text("ms: %f",deltaTime);
         }
         ImGui::End();
+
+        if(isCameraActive && InputManager::IsKeyPressed(Key::Escape))
+        {
+            isCameraActive = false;
+            window.EnableCursor();
+        }
+
+        if(isCameraActive)
+        {
+            camera.Update(deltaTime, window.GetNativeHandle());
+            sceneData.camPos = glm::vec4(camera.GetPosition(),1.0f);
+            sceneData.camFront = glm::vec4(camera.GetFront(),1.0f);
+            sceneData.camRight = glm::vec4(camera.GetRight(), 1.0f);
+            sceneData.camUp = glm::vec4(camera.GetUp(), 1.0f);
+            device->Upload<SceneData>(SceneDataBuffer,sceneData);
+        }
+
 
         ImGui::Render();
         device->ClearScreen(0.1f, 0.11f, 0.12f);
@@ -243,4 +305,6 @@ int main(int argc, char** argv)
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
+
+    
 }

@@ -6,4 +6,6 @@ namespace IceBrick::RHI
     RenderDevice* InitializeDevice(void* NativeWindowHandle);
     
     RenderDevice* GetDevice();
+
+    void ShutdownDevice();
 }

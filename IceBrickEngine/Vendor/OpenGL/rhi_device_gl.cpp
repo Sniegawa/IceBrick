@@ -1,7 +1,6 @@
 #include "rhi_device_gl.hpp"
 
 #include <cstdint>
-#include <functional>
 #include <glad/gl.h>
 #include "RHI/rhi_handles.hpp"
 #include "RHI/rhi_types.hpp"
@@ -16,7 +15,25 @@ namespace IceBrick::RHI
     }
     GLRenderDevice::~GLRenderDevice()
     {
+        for(auto& t : m_TexturePool)
+            if(t.active)
+                glDeleteTextures(1,&t.glID);
 
+        for(auto& b : m_BufferPool)
+            if(b.active)
+                glDeleteBuffers(1,&b.glID);
+
+        for(auto& p : m_PipelinePool)
+            if(p.active)
+                glDeleteProgram(p.glID);
+
+        m_TexturePool.clear();
+        m_BufferPool.clear();
+        m_PipelinePool.clear();
+
+        m_FreeTextureIndices.clear();
+        m_FreeBufferIndices.clear();
+        m_FreePipelineIndices.clear();
     }
 
     void GLRenderDevice::BeginFrame()

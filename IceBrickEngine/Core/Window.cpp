@@ -46,4 +46,14 @@ namespace IceBrick
     {
         return glfwWindowShouldClose(m_NativeHandle);
     }
+
+    void Window::DisableCursor()
+    {
+        glfwSetInputMode(m_NativeHandle, GLFW_CURSOR, GLFW_CURSOR_DISABLED);    
+    }
+
+    void Window::EnableCursor()
+    {
+        glfwSetInputMode(m_NativeHandle, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    }
 };

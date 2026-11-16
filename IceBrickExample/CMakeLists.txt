@@ -6,6 +6,7 @@ target_link_libraries(IceBrickExample PRIVATE
 )
 target_sources(IceBrickExample PRIVATE
     src/main.cpp
+    src/Camera.cpp
 )
 
 if(WIN32)

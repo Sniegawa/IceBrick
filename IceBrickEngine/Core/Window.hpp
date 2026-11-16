@@ -32,6 +32,9 @@ namespace IceBrick
 
         bool ShouldClose();
 
+        void DisableCursor();
+        void EnableCursor();
+
     private:
         GLFWwindow* m_NativeHandle;
     };
