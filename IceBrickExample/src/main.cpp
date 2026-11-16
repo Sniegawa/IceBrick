@@ -5,6 +5,8 @@
 #include "RHI/rhi_handles.hpp"
 #include "RHI/rhi_pipeline_resources.hpp"
 #include "RHI/rhi_types.hpp"
+#include "Renderer/VoxelFormat.hpp"
+#include "Renderer/VoxelRenderer.hpp"
 
 #include <array>
 #include <cmath>
@@ -12,6 +14,7 @@
 #include <fstream>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <random>
 #include <spdlog/spdlog.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -25,13 +28,6 @@
 #include "Camera.hpp"
 
 using namespace IceBrick;
-
-struct TestStruct
-{
-    uint32_t a = 0;
-    bool b = false;
-    uint64_t c = 1;
-};
 
 std::string ReadShaderFile(const std::filesystem::path& filepath)
 {
@@ -53,12 +49,6 @@ std::string ReadShaderFile(const std::filesystem::path& filepath)
 
         return buffer;
 }
-
-struct Voxel
-{
-    uint32_t mat;
-};
-
 
 Camera camera;
 bool isCameraActive = false;
@@ -92,51 +82,33 @@ int main(int argc, char** argv)
 
     ImGui_ImplGlfw_InitForOpenGL(static_cast<GLFWwindow*>(window.GetNativeHandle()), true);
     ImGui_ImplOpenGL3_Init("#version 460 core");
-    uint32_t TEXDATA[16] = { 
-    0xFF0000FF, 0xFF00FF00, 0xFF0000FF, 0xFF00FF00,
-    0xFF00FF00, 0xFF0000FF, 0xFF00FF00, 0xFF0000FF,
-    0xFF0000FF, 0xFF00FF00, 0xFF0000FF, 0xFF00FF00,
-    0xFF00FF00, 0xFF0000FF, 0xFF00FF00, 0xFF0000FF
-    };
-    RHI::BufferDescription bufDescription;
-    bufDescription.sizeInBytes = sizeof(TEXDATA); // - 1; // To test critical warning
-    bufDescription.usage = RHI::BufferUsage::StorageBuffer;
-    bufDescription.memoryAccess = RHI::BufferMemoryAccess::CpuToGpu;
 
-    auto BufferHandle = device->CreateBuffer(bufDescription);
+    SceneData sceneData;
+    sceneData.BackgroundColor = glm::vec4(0.5f, 0.7f, 1.0f, 1.0f);
+    sceneData.SunDir = glm::vec4(0.5f, 0.8f, 0.3f, 1.0f);
 
-    device->SetBufferData(BufferHandle,TEXDATA, sizeof(TEXDATA));
+    RHI::BufferDescription SceneDataDesc;
+    SceneDataDesc.memoryAccess = RHI::BufferMemoryAccess::CpuToGpu;
+    SceneDataDesc.usage = RHI::BufferUsage::UniformBuffer;
+    SceneDataDesc.sizeInBytes = sizeof(SceneData);
 
+    auto SceneDataBuffer = device->CreateBuffer(SceneDataDesc);
 
-    uint32_t ReadData;
-
-    device->GetBufferData(BufferHandle,&ReadData, sizeof(uint32_t), sizeof(uint32_t) * 2);
-
-    spdlog::info("ReadData    {}",ReadData);
-    spdlog::info("TEXDATA[0]  {}",TEXDATA[2]);
+    device->Upload<SceneData>(SceneDataBuffer,sceneData);
 
 
-    std::vector<TestStruct> testData;
-    testData.push_back(TestStruct());
-    testData.push_back({1, true, 0});
-    testData.push_back(TestStruct());
+    Renderer::VoxelRenderer renderer(SceneDataBuffer);
 
-    bufDescription.sizeInBytes = testData.size() * sizeof(TestStruct);
 
-    auto testStructBuffer = device->CreateBuffer(bufDescription);
-    device->Upload<TestStruct>(testStructBuffer,testData);
-
-    std::array<TestStruct,3> testRead;
-    device->Download<TestStruct>(testStructBuffer, testRead);
-
-    spdlog::info("Test struct readback: {} {} {}",testRead[1].a,testRead[1].b,testRead[1].c);
-
-    constexpr int GRID_SIZE = 128;
-    std::vector<Voxel> voxelGrid(GRID_SIZE * GRID_SIZE * GRID_SIZE,{0});
+    constexpr int GRID_SIZE = Renderer::GRID_SIZE;
+    std::vector<Renderer::Voxel> voxelGrid(GRID_SIZE * GRID_SIZE * GRID_SIZE,{0});
 
     float center = GRID_SIZE / 2.0f;
     float majorRadius = 40.0f; 
     float minorRadius = 10.0f;
+
+    std::mt19937 rng(6767);
+    std::uniform_int_distribution<int> colorDist(0,255);
 
     for (int z = 0; z < GRID_SIZE; ++z) {
         for (int y = 0; y < GRID_SIZE; ++y) {
@@ -154,64 +126,31 @@ int main(int argc, char** argv)
                 
                     int flatIndex = z * (GRID_SIZE * GRID_SIZE) + y * GRID_SIZE + x;
                 
-                    float angle = std::atan2(dz, dx);
-                    uint32_t matID = (static_cast<int>(angle * 4.0f) % 3 == 0) ? 1 : 2; 
-                
-                    voxelGrid[flatIndex].mat = matID; 
-                }
+                    uint8_t r = static_cast<uint8_t>(colorDist(rng));
+                    uint8_t g = static_cast<uint8_t>(colorDist(rng));
+                    uint8_t b = static_cast<uint8_t>(colorDist(rng));
+
+                    voxelGrid[flatIndex].data = Renderer::Voxel::Pack(r, g, b, 1);
+               }
 
                 if(y == 0)
                 { 
                     int flatIndex = z * (GRID_SIZE * GRID_SIZE) + y * GRID_SIZE + x;
 
-                    uint32_t matID = (x+z) % 2 + 3;
+                    uint8_t r = static_cast<uint8_t>(colorDist(rng));
+                    uint8_t g = static_cast<uint8_t>(colorDist(rng));
+                    uint8_t b = static_cast<uint8_t>(colorDist(rng));
 
-                    voxelGrid[flatIndex].mat = matID;
+                    voxelGrid[flatIndex].data = Renderer::Voxel::Pack(r, g, b, 1);               
                 }
             }
         }
     }
-    RHI::BufferDescription VoxelBufdesc;
-    VoxelBufdesc.sizeInBytes = sizeof(Voxel) * voxelGrid.size();
-    VoxelBufdesc.memoryAccess = RHI::BufferMemoryAccess::CpuToGpu;
+    
+    renderer.UploadVoxelData(voxelGrid);
 
-    auto VoxelBufferHandle = device->CreateBuffer(VoxelBufdesc);
 
-    device->Upload<Voxel>(VoxelBufferHandle,voxelGrid);
-
-    SceneData sceneData;
-    sceneData.BackgroundColor = glm::vec4(0.5f, 0.7f, 1.0f, 1.0f);
-    sceneData.SunDir = glm::vec4(0.5f, 0.8f, 0.3f, 1.0f);
-
-    RHI::BufferDescription SceneDataDesc;
-    SceneDataDesc.memoryAccess = RHI::BufferMemoryAccess::CpuToGpu;
-    SceneDataDesc.usage = RHI::BufferUsage::UniformBuffer;
-    SceneDataDesc.sizeInBytes = sizeof(SceneData);
-
-    auto SceneDataBuffer = device->CreateBuffer(SceneDataDesc);
-
-    device->Upload<SceneData>(SceneDataBuffer,sceneData);
-
-    RHI::TextureDescription outTexture;
-    outTexture.width = 1920;
-    outTexture.height = 1080;
-    outTexture.format = RHI::TextureFormat::RGBA8_UNORM;
-    outTexture.type = RHI::TextureType::Texture2D;
-    outTexture.usage = RHI::TextureUsage::Storage;
-    outTexture.filter = RHI::TextureFilter::Linear;
-    outTexture.generateMips = false;
-
-    auto outTextureHandle = device->CreateTexture(outTexture);
-
-    RHI::PipelineResources voxelPipelineResources;
-    voxelPipelineResources.SetStorageImage(0, outTextureHandle);
-    voxelPipelineResources.SetStorageBuffer(1, VoxelBufferHandle);
-    voxelPipelineResources.SetUniformBuffer(2, SceneDataBuffer);
-
-    std::string VoxelRayMarchSource = ReadShaderFile("../../../IceBrickExample/src/Voxel.comp");
-    auto VoxelPipeline = device->CreateComputePipeline(VoxelRayMarchSource);
-
-    unsigned int VoxelRenderNative = static_cast<unsigned int>(reinterpret_cast<uintptr_t>(device->GetTextureNativeHandle(outTextureHandle)));
+    unsigned int VoxelRenderNative = static_cast<unsigned int>(reinterpret_cast<uintptr_t>(device->GetTextureNativeHandle(renderer.GetOutTextureHandle())));
 
 
     float deltaTime = 0.0f;
@@ -224,19 +163,8 @@ int main(int argc, char** argv)
 
         glfwPollEvents();
        
-        voxelPipelineResources.Commit(device);
-        device->BindComputePipeline(VoxelPipeline);
-
-        device->DispatchCompute(
-                static_cast<uint32_t>((1920.0 + 15.0) / 16.0),
-                static_cast<uint32_t>((1080.0 + 15.0) / 16.0),
-                1
-        );
-
-
-        device->InsertImageMemoryBarrier();
-
-
+        renderer.Draw();
+        
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();

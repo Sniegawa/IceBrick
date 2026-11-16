@@ -397,6 +397,30 @@ namespace IceBrick::RHI
         return handle;
     }
 
+    void GLRenderDevice::DestroyPipeline(PipelineHandle handle)
+    {
+        uint32_t index = handle.GetIndex();
+        uint32_t handleGen = handle.GetGeneration();
+
+        if(index >= m_PipelinePool.size() || m_PipelinePool[index].generation != handleGen || !m_PipelinePool[index].active)
+        {
+            spdlog::warn("Attempted to destroy an invalid or stale PipelineHandle");
+            return;
+        }
+
+        GLPipelineNode& node = m_PipelinePool[index];
+
+        glDeleteProgram(node.glID);
+        node.glID = 0;
+        node.active = false;
+
+        // This ensures that no one will use object in this slot
+        // while accessing it as the just deleted buffer
+        node.generation++;
+
+        m_FreePipelineIndices.push_back(index);
+    }
+
     void GLRenderDevice::BindComputePipeline(PipelineHandle handle)
     {
         auto& node = GetPipelineNode(handle);

@@ -71,6 +71,8 @@ namespace IceBrick::RHI
 
         // Pipelines
         virtual PipelineHandle CreateComputePipeline(std::string_view computeShaderSource) override;
+        virtual void DestroyPipeline(PipelineHandle handle) override;
+
         virtual void BindComputePipeline(PipelineHandle handle) override;
         virtual void DispatchCompute(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) override;
         virtual void InsertImageMemoryBarrier() override;
