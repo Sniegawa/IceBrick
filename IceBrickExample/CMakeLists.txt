@@ -3,10 +3,12 @@ add_executable(IceBrickExample)
 
 target_link_libraries(IceBrickExample PRIVATE
     IceBrickEngine
+    fastgltf
 )
 target_sources(IceBrickExample PRIVATE
     src/main.cpp
     src/Camera.cpp
+    src/Voxelizer.cpp
 )
 
 if(WIN32)

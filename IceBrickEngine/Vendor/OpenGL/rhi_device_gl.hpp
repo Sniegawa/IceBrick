@@ -18,7 +18,7 @@ namespace IceBrick::RHI
 
     struct GLBufferNode : public GLNodeBase
     {
-        uint32_t sizeInBytes = 0;
+        size_t sizeInBytes = 0;
     };
 
     struct GLTextureNode : public GLNodeBase
@@ -57,10 +57,10 @@ namespace IceBrick::RHI
         virtual void* GetTextureNativeHandle(TextureHandle handle) override;
 
         // Data transfer
-        virtual void SetBufferData(BufferHandle handle, const void* data, uint32_t size, uint32_t offset = 0) override;
-        virtual void SetTextureData(TextureHandle handle, const void* data, uint32_t size) override;
+        virtual void SetBufferData(BufferHandle handle, const void* data, size_t size, uint32_t offset = 0) override;
+        virtual void SetTextureData(TextureHandle handle, const void* data, size_t size) override;
 
-        virtual void GetBufferData(BufferHandle handle, void* outData, uint32_t size, uint32_t offset = 0) override;
+        virtual void GetBufferData(BufferHandle handle, void* outData, size_t size, uint32_t offset = 0) override;
     
         // Data Binding
         virtual void BindUniformBuffer(uint32_t set, uint32_t binding, BufferHandle handle)override;

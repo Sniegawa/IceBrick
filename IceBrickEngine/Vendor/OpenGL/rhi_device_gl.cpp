@@ -208,7 +208,7 @@ namespace IceBrick::RHI
         return reinterpret_cast<void*>(static_cast<uintptr_t>(node.glID));
     }
 
-    void GLRenderDevice::SetBufferData(BufferHandle handle, const void* data, uint32_t size, uint32_t offset)
+    void GLRenderDevice::SetBufferData(BufferHandle handle, const void* data, size_t size, uint32_t offset)
     {
         GLBufferNode& node = GetBufferNode(handle);
         if(size > node.sizeInBytes)
@@ -219,7 +219,7 @@ namespace IceBrick::RHI
         glNamedBufferSubData(node.glID, offset, size, data);
     }
 
-    void GLRenderDevice::SetTextureData(TextureHandle handle, const void* data, uint32_t size)
+    void GLRenderDevice::SetTextureData(TextureHandle handle, const void* data, size_t size)
     {
         GLTextureNode& node = GetTextureNode(handle);
         
@@ -272,7 +272,7 @@ namespace IceBrick::RHI
 
     }
 
-    void GLRenderDevice::GetBufferData(BufferHandle handle, void* outData, uint32_t size, uint32_t offset)
+    void GLRenderDevice::GetBufferData(BufferHandle handle, void* outData, size_t size, uint32_t offset)
     {
         GLBufferNode& node = GetBufferNode(handle);
 

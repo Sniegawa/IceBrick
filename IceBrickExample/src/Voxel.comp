@@ -16,7 +16,8 @@ struct Ray
     vec3 direction;
 };
 
-const int GRID_SIZE = 128;
+const int GRID_SIZE = 256;
+
 
 layout(std430, binding = 1) readonly buffer VoxelGrid
 {

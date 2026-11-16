@@ -3,12 +3,10 @@
 #include "Core/Window.hpp"
 #include "RHI/rhi.hpp"
 #include "RHI/rhi_handles.hpp"
-#include "RHI/rhi_pipeline_resources.hpp"
 #include "RHI/rhi_types.hpp"
 #include "Renderer/VoxelFormat.hpp"
 #include "Renderer/VoxelRenderer.hpp"
 
-#include <array>
 #include <cmath>
 #include <cstdint>
 #include <fstream>
@@ -26,6 +24,7 @@
 
 
 #include "Camera.hpp"
+#include "Voxelizer.hpp"
 
 using namespace IceBrick;
 
@@ -124,7 +123,7 @@ int main(int argc, char** argv)
             
                 if ((distToTube * distToTube + dy * dy) <= (minorRadius * minorRadius)) {
                 
-                    int flatIndex = z * (GRID_SIZE * GRID_SIZE) + y * GRID_SIZE + x;
+                    size_t flatIndex = z * (GRID_SIZE * GRID_SIZE) + y * GRID_SIZE + x;
                 
                     uint8_t r = static_cast<uint8_t>(colorDist(rng));
                     uint8_t g = static_cast<uint8_t>(colorDist(rng));
@@ -135,7 +134,7 @@ int main(int argc, char** argv)
 
                 if(y == 0)
                 { 
-                    int flatIndex = z * (GRID_SIZE * GRID_SIZE) + y * GRID_SIZE + x;
+                    size_t flatIndex = z * (GRID_SIZE * GRID_SIZE) + y * GRID_SIZE + x;
 
                     uint8_t r = static_cast<uint8_t>(colorDist(rng));
                     uint8_t g = static_cast<uint8_t>(colorDist(rng));
@@ -152,6 +151,10 @@ int main(int argc, char** argv)
 
     unsigned int VoxelRenderNative = static_cast<unsigned int>(reinterpret_cast<uintptr_t>(device->GetTextureNativeHandle(renderer.GetOutTextureHandle())));
 
+    MeshData meshData = Load("../../../IceBrickExample/src/Dragon.gltf");
+    VoxelMesh voxelizedMesh = Voxelize(meshData);
+
+    renderer.UploadVoxelData(voxelizedMesh.VoxelMesh);
 
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
@@ -202,7 +205,8 @@ int main(int argc, char** argv)
 
         if(ImGui::Begin("Stats"))
         {
-            ImGui::Text("ms: %f",deltaTime);
+            ImGui::Text("ms: %f",1000.0f * deltaTime);
+            ImGui::Text("FPS: %f", ImGui::GetIO().Framerate);
         }
         ImGui::End();
 
