@@ -32,6 +32,24 @@ namespace IceBrick::RHI
 
         spdlog::info("RHI initialized succesfully");
 
+        glEnable(GL_DEBUG_OUTPUT);
+        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+
+        glDebugMessageCallback([](
+                    GLenum source,
+                    GLenum type,
+                    GLuint id,
+                    GLenum severity,
+                    GLsizei length,
+                    const GLchar* message,
+                    const void* userParam)
+                    {
+                        if(severity == GL_DEBUG_SEVERITY_NOTIFICATION) return;
+                        if(severity == GL_DEBUG_SEVERITY_HIGH)
+                            spdlog::critical("OpenGL ERROR: {}", static_cast<const char*>(message));
+                        else
+                            spdlog::warn("OpenGL WARNING: {}", static_cast<const char*>(message));
+                    },nullptr);
 
         g_Device = std::make_unique<GLRenderDevice>();
 
@@ -43,4 +61,5 @@ namespace IceBrick::RHI
         assert(g_Device != nullptr);
         return g_Device.get();
     }
+
 };
