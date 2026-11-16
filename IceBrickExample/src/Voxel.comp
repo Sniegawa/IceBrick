@@ -1,0 +1,166 @@
+#version 450
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(rgba8, binding = 0) uniform writeonly image2D u_OutputImage;
+
+
+struct Voxel
+{
+    uint material;
+};
+
+struct Ray
+{
+    vec3 origin;
+    vec3 direction;
+};
+
+const int GRID_SIZE = 32;
+
+layout(std430, binding = 1) readonly buffer VoxelGrid
+{
+    Voxel voxels[];
+};
+
+layout(std140, binding = 2) uniform SceneDataBuffer
+{
+    vec4 u_SunDir;
+    vec4 u_BackgroundColor;
+};
+
+uint GetVoxel(ivec3 pos)
+{
+        int flatIndex = pos.z * (GRID_SIZE * GRID_SIZE) + pos.y * GRID_SIZE + pos.x;
+    return voxels[flatIndex].material;
+}
+
+vec3 VoxelColors[4] = {
+    vec3(1.0,0.0,0.0),
+    vec3(0.0,1.0,0.0),
+    vec3(0.0,0.0,1.0),
+    vec3(0.9,0.9,0.9)
+};
+
+vec3 GetVoxelColor(uint id)
+{
+    return VoxelColors[id-1];
+}
+
+bool boundsCheck(ivec3 pos)
+{
+    return !( pos.x < 0 || pos.x >= GRID_SIZE ||
+        pos.y < 0 || pos.y >= GRID_SIZE ||
+        pos.z < 0 || pos.z >= GRID_SIZE);
+}
+
+
+void main()
+{
+    vec2 pixel = vec2(gl_GlobalInvocationID.xy);
+    vec2 res = vec2(imageSize(u_OutputImage));
+
+    vec2 screenPos = (pixel + 0.5) / res * 2.0 - 1.0;
+
+    float aspectRatio = res.x / res.y;
+    screenPos.x *= aspectRatio;
+
+    float fovScale = tan(radians(90) / 2.0);
+    screenPos *= fovScale;
+
+    Ray r;
+    r.origin = vec3(12.2, 5.1, -10.4);
+    r.direction = normalize(vec3(screenPos.x, screenPos.y, 1.0));
+
+    vec3 boxMin = vec3(0.0);
+    vec3 boxMax = vec3(GRID_SIZE);
+
+    vec3 t0 = (boxMin - r.origin) / r.direction;
+    vec3 t1 = (boxMax - r.origin) / r.direction;
+
+    vec3 tNear = min(t0, t1);
+    vec3 tFar = max(t0, t1);
+
+    float tEntry = max(max(tNear.x, tNear.y), tNear.z);
+    float tExit = min(min(tFar.x, tFar.y), tFar.z);
+
+    if(tEntry > tExit || tExit < 0.0)
+    {
+        imageStore(u_OutputImage, ivec2(pixel), u_BackgroundColor);
+        return;
+    }
+
+    r.origin = r.origin + max(0.0, tEntry + 0.00001) * r.direction;
+
+    ivec3 voxel = ivec3(floor(r.origin));
+    voxel = clamp(voxel, ivec3(0), ivec3(31));
+
+    ivec3 step = ivec3(sign(r.direction));
+    if(step.x == 0) step.x = 1;
+    if(step.y == 0) step.y = 1;
+    if(step.z == 0) step.z = 1;
+
+    vec3 tDelta = 1.0 / max(abs(r.direction), 0.00001);
+
+    // Distance to the first boundary
+    vec3 tMax;
+    vec3 fraction = fract(r.origin);
+
+    tMax.x = (step.x > 0) ? (1.0 - fraction.x) * tDelta.x : fraction.x * tDelta.x;
+    tMax.y = (step.y > 0) ? (1.0 - fraction.y) * tDelta.y : fraction.y * tDelta.y;
+    tMax.z = (step.z > 0) ? (1.0 - fraction.z) * tDelta.z : fraction.z * tDelta.z;
+
+    vec3 color = u_BackgroundColor.xyz;
+    ivec3 mask = ivec3(0);
+
+    while(boundsCheck(voxel))
+    {
+        uint voxelID = GetVoxel(voxel);
+        if(voxelID != 0)
+        {
+            vec3 baseColor = GetVoxelColor(voxelID);
+
+            const vec3 lightDir = normalize(-u_SunDir.xyz);
+
+            vec3 normal = vec3(mask) * vec3(-step);
+            
+            float diffuse = max(dot(normal, lightDir), 0.1);
+
+            color = baseColor * diffuse;
+
+            break;
+        }
+
+        if(tMax.x < tMax.y)
+        {
+            if(tMax.x < tMax.z)
+            {
+                voxel.x += step.x;
+                tMax.x += tDelta.x;
+                mask = ivec3(1.0, 0.0, 0.0);
+            }
+            else
+            {
+                voxel.z += step.z;
+                tMax.z += tDelta.z;
+                mask = ivec3(0.0,0.0,1.0);
+            }
+        }
+        else if(tMax.y < tMax.z)
+        {
+            voxel.y += step.y;
+            tMax.y += tDelta.y;
+            mask = ivec3(0.0,1.0,0.0);
+        }
+        else
+        {
+            voxel.z += step.z;
+            tMax.z += tDelta.z;
+            mask = ivec3(0.0,0.0,1.0);
+        }
+
+    }
+
+    imageStore(u_OutputImage, ivec2(pixel), vec4(color,1.0));
+
+}

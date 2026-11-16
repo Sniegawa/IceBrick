@@ -7,9 +7,12 @@
 #include "RHI/rhi_types.hpp"
 
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <fstream>
 #include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <random>
 #include <spdlog/spdlog.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -18,6 +21,8 @@
 #include <GLFW/glfw3.h>
 #include <string>
 #include <filesystem>
+
+using namespace IceBrick;
 
 struct TestStruct
 {
@@ -47,11 +52,22 @@ std::string ReadShaderFile(const std::filesystem::path& filepath)
         return buffer;
 }
 
+struct Voxel
+{
+    uint32_t mat;
+};
+
+struct SceneData
+{
+    glm::vec4 SunDir;
+    glm::vec4 BackgroundColor;
+};
+
 int main(int argc, char** argv)
 {
-    auto window = IceBrick::Window(1280, 720, "IceBrick");
+    auto window = Window(1280, 720, "IceBrick");
     
-    auto device = IceBrick::RHI::InitializeDevice(window.GetNativeHandle());
+    auto device = RHI::InitializeDevice(window.GetNativeHandle());
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -64,33 +80,16 @@ int main(int argc, char** argv)
 
     ImGui_ImplGlfw_InitForOpenGL(static_cast<GLFWwindow*>(window.GetNativeHandle()), true);
     ImGui_ImplOpenGL3_Init("#version 460 core");
-
-    IceBrick::RHI::TextureDescription texDescription;
-    texDescription.usage = IceBrick::RHI::TextureUsage::Sampled;
-    texDescription.width = 4;
-    texDescription.height = 4;
-    texDescription.type = IceBrick::RHI::TextureType::Texture2D;
-    texDescription.format = IceBrick::RHI::TextureFormat::RGBA8_UNORM;
-    texDescription.filter = IceBrick::RHI::TextureFilter::Nearest; // Imgui ignores this
-    texDescription.wrap = IceBrick::RHI::TextureWrap::Repeat;
-    texDescription.generateMips = false;
-
     uint32_t TEXDATA[16] = { 
     0xFF0000FF, 0xFF00FF00, 0xFF0000FF, 0xFF00FF00,
     0xFF00FF00, 0xFF0000FF, 0xFF00FF00, 0xFF0000FF,
     0xFF0000FF, 0xFF00FF00, 0xFF0000FF, 0xFF00FF00,
     0xFF00FF00, 0xFF0000FF, 0xFF00FF00, 0xFF0000FF
     };
-    auto texHandle = device->CreateTexture(texDescription);
-    
-    device->SetTextureData(texHandle, TEXDATA, sizeof(TEXDATA));
-    
-    unsigned int TextureHandle = static_cast<unsigned int>(reinterpret_cast<uintptr_t>(device->GetTextureNativeHandle(texHandle)));
-
-    IceBrick::RHI::BufferDescription bufDescription;
+    RHI::BufferDescription bufDescription;
     bufDescription.sizeInBytes = sizeof(TEXDATA); // - 1; // To test critical warning
-    bufDescription.usage = IceBrick::RHI::BufferUsage::StorageBuffer;
-    bufDescription.memoryAccess = IceBrick::RHI::BufferMemoryAccess::CpuToGpu;
+    bufDescription.usage = RHI::BufferUsage::StorageBuffer;
+    bufDescription.memoryAccess = RHI::BufferMemoryAccess::CpuToGpu;
 
     auto BufferHandle = device->CreateBuffer(bufDescription);
 
@@ -120,36 +119,93 @@ int main(int argc, char** argv)
 
     spdlog::info("Test struct readback: {} {} {}",testRead[1].a,testRead[1].b,testRead[1].c);
 
-    // Pipeline tests
+    constexpr int GRID_SIZE = 32;
+    std::vector<Voxel> voxelGrid(GRID_SIZE * GRID_SIZE * GRID_SIZE,{0});
 
-    std::string compSource = ReadShaderFile("../../../IceBrickExample/src/uv.comp");
-    auto uvPipeline = device->CreateComputePipeline(compSource);
+    int center = GRID_SIZE / 2;
+    float radius = 10.0f;
 
-    IceBrick::RHI::TextureDescription uvDescription;
-    uvDescription.width = 1920;
-    uvDescription.height = 1080;
-    uvDescription.format = IceBrick::RHI::TextureFormat::RGBA8_UNORM;
-    uvDescription.type = IceBrick::RHI::TextureType::Texture2D;
-    uvDescription.usage = IceBrick::RHI::TextureUsage::Storage;
+    std::mt19937 r;
 
-    auto uvTexture = device->CreateTexture(uvDescription);
-    
+    r.seed(0);
 
-    IceBrick::RHI::PipelineResources resources;
-    resources.SetStorageImage(0, uvTexture, IceBrick::RHI::ImageAccess::WriteOnly);
+    for(int z = 0; z < GRID_SIZE; z++)
+    {
+        for(int y = 0; y < GRID_SIZE; y++)
+        {
+            for(int x = 0; x < GRID_SIZE; x++)
+            {
+                float dx = x - center;
+                float dy = y - center;
+                float dz = z - center;
+
+                if(std::sqrt(dx*dx + dy*dy + dz*dz) <= radius)
+                {
+                    int flatIndex = z * (GRID_SIZE * GRID_SIZE) + y * GRID_SIZE + x;
+                    voxelGrid[flatIndex].mat = r()%4 + 1;
+                }
+            }
+        }
+    }
+
+    RHI::BufferDescription VoxelBufdesc;
+    VoxelBufdesc.sizeInBytes = sizeof(Voxel) * voxelGrid.size();
+    VoxelBufdesc.memoryAccess = RHI::BufferMemoryAccess::CpuToGpu;
+
+    auto VoxelBufferHandle = device->CreateBuffer(VoxelBufdesc);
+
+    device->Upload<Voxel>(VoxelBufferHandle,voxelGrid);
+
+    SceneData sceneData;
+    sceneData.BackgroundColor = glm::vec4(0.5f, 0.7f, 1.0f, 1.0f);
+    sceneData.SunDir = glm::vec4(0.5f, 0.8f, 0.3f, 1.0f);
+
+    RHI::BufferDescription SceneDataDesc;
+    SceneDataDesc.memoryAccess = RHI::BufferMemoryAccess::CpuToGpu;
+    SceneDataDesc.usage = RHI::BufferUsage::UniformBuffer;
+    SceneDataDesc.sizeInBytes = sizeof(SceneData);
+
+    auto SceneDataBuffer = device->CreateBuffer(SceneDataDesc);
+
+    device->Upload<SceneData>(SceneDataBuffer,sceneData);
+
+    RHI::TextureDescription outTexture;
+    outTexture.width = 1920;
+    outTexture.height = 1080;
+    outTexture.format = RHI::TextureFormat::RGBA8_UNORM;
+    outTexture.type = RHI::TextureType::Texture2D;
+    outTexture.usage = RHI::TextureUsage::Storage;
+
+    auto outTextureHandle = device->CreateTexture(outTexture);
+
+    RHI::PipelineResources voxelPipelineResources;
+    voxelPipelineResources.SetStorageImage(0, outTextureHandle);
+    voxelPipelineResources.SetStorageBuffer(1, VoxelBufferHandle);
+    voxelPipelineResources.SetUniformBuffer(2, SceneDataBuffer);
+
+    std::string VoxelRayMarchSource = ReadShaderFile("../../../IceBrickExample/src/Voxel.comp");
+    auto VoxelPipeline = device->CreateComputePipeline(VoxelRayMarchSource);
+
+    unsigned int VoxelRenderNative = static_cast<unsigned int>(reinterpret_cast<uintptr_t>(device->GetTextureNativeHandle(outTextureHandle)));
+
 
     while(!window.ShouldClose())
     {
         glfwPollEvents();
        
-        if(IceBrick::InputManager::IsKeyPressed(IceBrick::Key::Space))
+        if(InputManager::IsKeyPressed(Key::Space))
             spdlog::info("SPACE");
 
-        resources.Commit(device);
-        device->BindComputePipeline(uvPipeline);
+        voxelPipelineResources.Commit(device);
+        device->BindComputePipeline(VoxelPipeline);
 
-        device->DispatchCompute(static_cast<uint32_t>((1920.0 + 15.0) / 16.0), static_cast<uint32_t>((1080.0 + 15.0) / 16.0),1);
-        
+        device->DispatchCompute(
+                static_cast<uint32_t>((1920.0 + 15.0) / 16.0),
+                static_cast<uint32_t>((1080.0 + 15.0) / 16.0),
+                1
+        );
+
+
         device->InsertImageMemoryBarrier();
 
 
@@ -159,10 +215,21 @@ int main(int argc, char** argv)
 
         ImGui::DockSpaceOverViewport(ImGui::GetMainViewport()->ID);
 
-        if(ImGui::Begin("Test"))
+        if(ImGui::Begin("Parameters"))
         {
-            ImGui::Text("TEST");
-            ImGui::Image((ImTextureID)(intptr_t)TextureHandle,ImVec2(64,64));
+            ImGui::DragFloat3("Sun direction", glm::value_ptr(sceneData.SunDir),0.05f,-1.0f,1.0f);
+            ImGui::ColorPicker3("Background color", glm::value_ptr(sceneData.BackgroundColor));
+
+            if(ImGui::Button("Upload data"))
+            {
+                device->Upload<SceneData>(SceneDataBuffer,sceneData);
+            }
+        }
+        ImGui::End();
+
+        if(ImGui::Begin("Output"))
+        {
+            ImGui::Image((ImTextureID)(intptr_t)VoxelRenderNative,ImVec2(1920,1080));
         }
         ImGui::End();
 
