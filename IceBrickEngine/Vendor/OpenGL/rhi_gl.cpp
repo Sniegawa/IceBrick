@@ -53,6 +53,11 @@ namespace IceBrick::RHI
 
         g_Device = std::make_unique<GLRenderDevice>();
 
+        const char* renderer = reinterpret_cast<const char*>(glGetString(GL_RENDERER));
+        const char* version  = reinterpret_cast<const char*>(glGetString(GL_VERSION));
+
+        spdlog::info("Running OpenGL {}, on {}",version, renderer);
+
         return g_Device.get(); 
     }
     
