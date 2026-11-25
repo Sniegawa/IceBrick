@@ -24,6 +24,8 @@ namespace IceBrick::RHI
 
         glfwMakeContextCurrent(window);
 
+        glfwSwapInterval(0);
+
         if(!gladLoadGL(glfwGetProcAddress))
         {
             spdlog::error("Failed to initialize GLAD!");

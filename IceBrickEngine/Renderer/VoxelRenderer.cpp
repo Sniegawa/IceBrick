@@ -85,8 +85,8 @@ namespace IceBrick::Renderer
 
         // TODO : CHANGE SO THAT IT USES THE OUT TEXTURE RESOLUTION DYNAMICALLY
         device->DispatchCompute(
-                static_cast<uint32_t>((1920.0 + 15.0) / 16.0),
-                static_cast<uint32_t>((1080.0 + 15.0) / 16.0),
+                static_cast<uint32_t>((1920.0 + 7.0) / 8.0),
+                static_cast<uint32_t>((1080.0 + 7.0) / 8.0),
                 1
         );
 

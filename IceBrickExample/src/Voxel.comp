@@ -1,22 +1,14 @@
 #version 450
 
-layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
 layout(rgba8, binding = 0) uniform writeonly image2D u_OutputImage;
-
-
-struct Voxel
-{
-    uint material;
-};
 
 struct Ray
 {
     vec3 origin;
     vec3 direction;
 };
-
-const int GRID_SIZE = 512;
 
 layout(binding = 1) uniform usampler3D u_VoxelGrid;
 
@@ -32,9 +24,9 @@ layout(std140, binding = 2) uniform SceneDataBuffer
     ivec4 debugInfo;
 };
 
-uint GetVoxel(ivec3 pos)
+uint GetVoxel(ivec3 pos, int lod)
 {
-    return texelFetch(u_VoxelGrid, pos, 0).r;
+    return texelFetch(u_VoxelGrid, pos, lod).r;
 }
 
 vec3 UnpackVoxelColor(uint voxelData)
@@ -50,12 +42,6 @@ bool isVoxelSolid(uint voxelData)
 {
     return (voxelData & 1u) != 0u;
 }
-
-bool boundsCheck(ivec3 pos)
-{
-    return all(greaterThanEqual(pos, ivec3(0))) && all(lessThan(pos, ivec3(GRID_SIZE)));
-}
-
 
 vec3 DebugHeatmap(uint checks, int threshold)
 {
@@ -109,15 +95,18 @@ void main()
     );
 
     vec3 safeDir = r.direction;
-    if(abs(safeDir.x) <0.000001) safeDir.x = 0.000001;
-    if(abs(safeDir.y) <0.000001) safeDir.y = 0.000001;
-    if(abs(safeDir.z) <0.000001) safeDir.z = 0.000001;
+    if(abs(safeDir.x) <0.000001) safeDir.x = (safeDir.x < 0.0) ? -0.000001 : 0.000001;
+    if(abs(safeDir.y) <0.000001) safeDir.y = (safeDir.y < 0.0) ? -0.000001 : 0.000001;
+    if(abs(safeDir.z) <0.000001) safeDir.z = (safeDir.z < 0.0) ? -0.000001 : 0.000001;
 
+    ivec3 baseDims = textureSize(u_VoxelGrid,0);
     vec3 boxMin = vec3(0.0);
-    vec3 boxMax = vec3(GRID_SIZE);
+    vec3 boxMax = vec3(baseDims);
 
-    vec3 t0 = (boxMin - r.origin) / safeDir;
-    vec3 t1 = (boxMax - r.origin) / safeDir;
+    vec3 invDir = 1.0 / safeDir;
+
+    vec3 t0 = (boxMin - r.origin) * invDir;
+    vec3 t1 = (boxMax - r.origin) * invDir;
 
     vec3 tNear = min(t0, t1);
     vec3 tFar = max(t0, t1);
@@ -133,21 +122,10 @@ void main()
 
     r.origin = r.origin + max(0.0, tEntry) * r.direction;
 
-    ivec3 voxel = ivec3(floor(r.origin));
-    voxel = clamp(voxel, ivec3(0), ivec3(GRID_SIZE - 1));
-
     ivec3 step = ivec3(sign(r.direction));
     if(step.x == 0) step.x = 1;
     if(step.y == 0) step.y = 1;
     if(step.z == 0) step.z = 1;
-
-    vec3 tDelta = 1.0 / max(abs(r.direction), 0.00001);
-
-    // Distance to the first boundary
-    vec3 tMax;
-    tMax.x = (step.x > 0) ? (float(voxel.x + 1) - r.origin.x) * tDelta.x : (r.origin.x - float(voxel.x)) * tDelta.x;
-    tMax.y = (step.y > 0) ? (float(voxel.y + 1) - r.origin.y) * tDelta.y : (r.origin.y - float(voxel.y)) * tDelta.y;
-    tMax.z = (step.z > 0) ? (float(voxel.z + 1) - r.origin.z) * tDelta.z : (r.origin.z - float(voxel.z)) * tDelta.z;
 
     vec3 color = u_BackgroundColor.xyz;
     ivec3 mask = ivec3(0);
@@ -163,51 +141,87 @@ void main()
     // Debug info
     uint checks = 0;
 
-    while(boundsCheck(voxel))
+    
+
+    int maxLod = min(7, textureQueryLevels(u_VoxelGrid) - 1);
+    int lod = maxLod;
+    float t = 0.0;
+
+    ivec3 startDims = max(ivec3(1), baseDims >> lod);
+    ivec3 cell = clamp(ivec3(floor(r.origin)) >> lod, ivec3(0), startDims - 1);
+
+
+    while(true)
     {
         checks++;
-        uint voxelData = GetVoxel(voxel);
+        uint voxelData = GetVoxel(cell, lod);
+
         if(isVoxelSolid(voxelData))
         {
-            vec3 baseColor = UnpackVoxelColor(voxelData);
+            if(lod == 0)
+            { 
+                vec3 baseColor = UnpackVoxelColor(voxelData);
+                const vec3 lightDir = normalize(u_SunDir.xyz);
+                vec3 normal = vec3(mask) * vec3(-step);
+                float diffuse = max(dot(normal, lightDir), 0.1);
+                color = baseColor * diffuse;
 
-            const vec3 lightDir = normalize(u_SunDir.xyz);
+                break;
+            }
 
-            vec3 normal = vec3(mask) * vec3(-step);
-            
-            float diffuse = max(dot(normal, lightDir), 0.1);
-
-            color = baseColor * diffuse;
-
-            break;
+            lod--;
+            vec3 pos = r.origin + t * r.direction;
+            ivec3 child = ivec3(floor(pos)) >> lod;
+            cell = clamp(child, cell * 2, cell * 2 + 1);
+            continue;
         }
 
-        if(tMax.x < tMax.y)
+        float cellSize = float(1 << lod);
+        vec3 exitPlane = (vec3(cell) + vec3(greaterThan(step, ivec3(0)))) * cellSize;
+        vec3 tPlane = (exitPlane - r.origin) * invDir;
+
+        ivec3 mipDims = max(ivec3(1), baseDims >> lod);
+        int oldCoord;
+        int newCoord;
+        int axisLimit;
+
+        if(tPlane.x < tPlane.y && tPlane.x < tPlane.z)
         {
-            if(tMax.x < tMax.z)
-            {
-                voxel.x += step.x;
-                tMax.x += tDelta.x;
-                mask = ivec3(1.0, 0.0, 0.0);
-            }
-            else
-            {
-                voxel.z += step.z;
-                tMax.z += tDelta.z;
-                mask = ivec3(0.0,0.0,1.0);
-            }
+            t = max(t, tPlane.x);
+            oldCoord = cell.x;
+            cell.x += step.x;
+            newCoord = cell.x;
+            axisLimit = mipDims.x;
+            mask = ivec3(1, 0, 0);
         }
-        else if(tMax.y < tMax.z)
+        else if(tPlane.y < tPlane.z)
         {
-            voxel.y += step.y;
-            tMax.y += tDelta.y;
-            mask = ivec3(0.0,1.0,0.0);
+            t = max(t, tPlane.y);
+            oldCoord = cell.y;
+            cell.y += step.y;
+            newCoord = cell.y;
+            axisLimit = mipDims.y;
+            mask = ivec3(0, 1, 0);
         }
         else
         {
-            voxel.z += step.z;
-            tMax.z += tDelta.z;
-            mask = ivec3(0.0,0.0,1.0);
+            t = max(t, tPlane.z);
+            oldCoord = cell.z;
+            cell.z += step.z;
+            newCoord = cell.z;
+            axisLimit = mipDims.z;
+            mask = ivec3(0, 0, 1);
+        }
+
+        if(newCoord < 0 || newCoord >= axisLimit)
+            break;
+
+
+        // If hit nothing go back to higher LOD
+        if(lod < maxLod && (oldCoord >> 1) != (newCoord >> 1))
+        {
+            lod++;
+            cell >>= 1;
         }
 
     }

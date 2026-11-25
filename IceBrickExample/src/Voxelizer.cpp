@@ -504,7 +504,7 @@ VoxelMesh Voxelize(MeshData data)
 
     spdlog::info("Successfully voxelized mesh. {}",voxels);
 
-    GenerateSupercoverMips(vMesh, GRID_SIZE, 5);
+    GenerateSupercoverMips(vMesh, GRID_SIZE, 8);
 
     return vMesh;
 }
