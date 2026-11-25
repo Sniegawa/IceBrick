@@ -9,6 +9,14 @@ struct Vertex
 {
     glm::vec3 position;
     glm::vec3 color;
+    glm::vec2 uv;
+};
+
+struct TextureData 
+{
+    int width; 
+    int height; 
+    std::vector<uint8_t> pixels; 
 };
 
 struct MeshData
@@ -17,6 +25,8 @@ struct MeshData
     std::vector<uint32_t> indices;
     glm::vec3 localMin;
     glm::vec3 localMax;
+
+    TextureData texture;
 };
 
 struct VoxelMesh

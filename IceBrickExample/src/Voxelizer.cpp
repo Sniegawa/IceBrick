@@ -6,6 +6,7 @@
 #include "fastgltf/parser.hpp"
 #include "glm/common.hpp"
 #include "glm/detail/qualifier.hpp"
+#include "glm/ext/vector_float2.hpp"
 #include "glm/ext/vector_float3.hpp"
 #include "glm/ext/vector_float4.hpp"
 #include "spdlog/spdlog.h"
@@ -19,13 +20,18 @@
 #include <fastgltf/util.hpp>
 #include <fastgltf/glm_element_traits.hpp>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <Vendor/stb/stb_image.h>
+
+
+
 MeshData Load(const std::filesystem::path& filepath)
 {
     MeshData result;
 
     fastgltf::Parser parser;
 
-    constexpr auto gltfOptions = fastgltf::Options::LoadExternalBuffers;
+    constexpr auto gltfOptions = fastgltf::Options::LoadExternalBuffers | fastgltf::Options::LoadExternalImages;
 
     auto data = fastgltf::GltfDataBuffer::FromPath(filepath);
     if(data.error() != fastgltf::Error::None)
@@ -59,7 +65,7 @@ MeshData Load(const std::filesystem::path& filepath)
                 fastgltf::iterateAccessorWithIndex<glm::vec3>(asset, accessor,
                         [&](glm::vec3 pos, size_t idx)
                         {
-                            result.vertices.push_back({ pos, glm::vec3(0.7f,0.7f,0.7f)});
+                            result.vertices.push_back({ pos, glm::vec3(1.0f,1.0f,1.0f), glm::vec3(0.0f)});
                             if(pos.x < result.localMin.x) result.localMin.x = pos.x;
                             if(pos.y < result.localMin.y) result.localMin.y = pos.y;
                             if(pos.z < result.localMin.z) result.localMin.z = pos.z;
@@ -80,9 +86,20 @@ MeshData Load(const std::filesystem::path& filepath)
                         [&](glm::vec3 color, size_t index)
                         {
                             result.vertices[initialVertexCount + index].color = glm::vec3(color);    
-                            //spdlog::info("{} {} {}",color.r, color.g, color.b);
                         }
                 );
+            }
+
+            auto uvIt = primitive.findAttribute("TEXCOORD_0");
+            if(uvIt != primitive.attributes.end())
+            {
+                auto& accessor = asset.accessors[uvIt->accessorIndex];
+
+                fastgltf::iterateAccessorWithIndex<glm::vec2>(asset, accessor, 
+                        [&](glm::vec2 uv, size_t index)
+                        {
+                            result.vertices[initialVertexCount + index].uv = uv;
+                        });
             }
 
             if(primitive.indicesAccessor.has_value())
@@ -103,6 +120,86 @@ MeshData Load(const std::filesystem::path& filepath)
                     result.indices.push_back(initialVertexCount + 1);
             }
 
+
+            // Handle textures
+            stbi_set_flip_vertically_on_load(false);
+
+            glm::vec3 baseColorFactor(1.0f);
+            if(primitive.materialIndex.has_value())
+            {
+                const auto& mat = asset.materials[*primitive.materialIndex];
+                baseColorFactor = {
+                    mat.pbrData.baseColorFactor.x(),
+                    mat.pbrData.baseColorFactor.y(),
+                    mat.pbrData.baseColorFactor.z()
+                };
+
+                if(mat.pbrData.baseColorTexture.has_value())
+                {
+                    const auto& tex = asset.textures[mat.pbrData.baseColorTexture->textureIndex];
+                    if(tex.imageIndex.has_value())
+                    {
+                        const auto& img = asset.images[*tex.imageIndex];
+                        auto decodeFromMemory = [&](const std::byte* bytes, size_t len)
+                        {
+                            int w = 0;
+                            int h = 0;
+                            int channels = 0;
+                            stbi_uc* raw = stbi_load_from_memory(
+                                    reinterpret_cast<const stbi_uc*>(bytes),
+                                    static_cast<int>(len),
+                                    &w,
+                                    &h,
+                                    &channels,
+                                    4
+                            );
+
+                            if(raw)
+                            {
+                                result.texture.width = w;
+                                result.texture.height = h;
+                                result.texture.pixels.assign(raw, raw + (w * h * 4));
+                                stbi_image_free(raw);
+                            }
+                            else 
+                            {
+                                spdlog::error("stbi_load_from_memory failed: {}", stbi_failure_reason());
+                            }
+                        };
+
+                        std::visit(fastgltf::visitor
+                        {
+                            [](auto&){},
+                            [&](const fastgltf::sources::Array& arr)
+                            {
+                                decodeFromMemory(arr.bytes.data(), arr.bytes.size());
+                            },
+                            [&](const fastgltf::sources::Vector& vec)
+                            {
+                                decodeFromMemory(vec.bytes.data(), vec.bytes.size());
+                            },
+                            [&](const fastgltf::sources::BufferView& view)
+                            {
+                                const auto& bv = asset.bufferViews[view.bufferViewIndex];
+                                const auto& buf = asset.buffers[bv.bufferIndex];
+                                std::visit(fastgltf::visitor 
+                                {
+                                    [](auto&){},
+                                    [&](const fastgltf::sources::Array& arr)
+                                    {
+                                        decodeFromMemory(arr.bytes.data() + bv.byteOffset, arr.bytes.size());
+                                    },
+                                    [&](const fastgltf::sources::Vector& vec)
+                                    {
+                                        decodeFromMemory(vec.bytes.data() + bv.byteOffset, vec.bytes.size());
+                                    },
+                                },buf.data);
+                            }
+                        },img.data);
+                    }
+                }
+            }
+
         }
     }
 
@@ -112,6 +209,29 @@ MeshData Load(const std::filesystem::path& filepath)
     return result;
 }
 
+glm::vec3 SampleTexture(const TextureData& tex, glm::vec2 uv)
+{
+    if(tex.pixels.empty() || tex.width == 0 || tex.height == 0)
+        return glm::vec3(1.0f);
+
+    float wrappedU = uv.x - std::floor(uv.x);
+    float wrappedV = uv.y - std::floor(uv.y);
+
+    int px = std::clamp(static_cast<int>(wrappedU * tex.width), 0, tex.width - 1);
+    int py = std::clamp(static_cast<int>(wrappedV * tex.height), 0, tex.height - 1);
+
+    size_t idx = (static_cast<size_t>(py) * tex.width + px) * 4;
+    return glm::vec3( 
+            tex.pixels[idx + 0] / 255.0f,
+            tex.pixels[idx + 1] / 255.0f,
+            tex.pixels[idx + 2] / 255.0f
+    );
+}
+static uint8_t Quantize5BitTo8(uint8_t c)
+{
+    uint8_t q5 = static_cast<uint8_t>(std::min(c + 4, 255) >> 3); // 0..31 rounded
+    return static_cast<uint8_t>((q5 << 3) | (q5 >> 2));           // 0..255 full range
+}
 
 VoxelMesh Voxelize(MeshData data)
 {
@@ -119,7 +239,12 @@ VoxelMesh Voxelize(MeshData data)
     size_t voxels = 0;
 
     constexpr size_t GRID_SIZE = IceBrick::Renderer::GRID_SIZE;
-
+    
+    struct VoxelAccum {
+        glm::vec3 colorSum = glm::vec3(0.0f);
+        uint32_t count = 0;
+    };
+    std::vector<VoxelAccum> accum(GRID_SIZE * GRID_SIZE * GRID_SIZE);
     vMesh.VoxelMesh.resize(GRID_SIZE * GRID_SIZE * GRID_SIZE, IceBrick::Renderer::Voxel{0});
 
     glm::vec3 size = data.localMax - data.localMin;
@@ -161,6 +286,14 @@ VoxelMesh Voxelize(MeshData data)
         triMin = glm::clamp(triMin, glm::ivec3(0), glm::ivec3(GRID_SIZE - 1));
         triMax = glm::clamp(triMax, glm::ivec3(0), glm::ivec3(GRID_SIZE - 1));
 
+        glm::vec3 bV0 = E0;
+        glm::vec3 bV1 = -E2;
+        float d00 = glm::dot(bV0, bV0);
+        float d01 = glm::dot(bV0, bV1);
+        float d11 = glm::dot(bV1, bV1);
+
+        float baryDenom = d00 * d11 - d01 * d01;
+        float invBaryDenom = (std::abs(baryDenom) > 1e-8f) ? (1.0f / baryDenom) : 0.0f;
 
         for(int z = triMin.z; z <= triMax.z; z++)
         {
@@ -259,24 +392,58 @@ VoxelMesh Voxelize(MeshData data)
 
                     // SUCCESS
                     
-                    glm::vec3 avgColor = (V0.color + V1.color + V2.color) / 3.0f;
+                    glm::vec3 bary(1.0f / 3.0f);
+                    if(invBaryDenom != 0.0f)
+                    {
+                        glm::vec3 bV2 = voxelCenter - P0;
+                        float d20 = glm::dot(bV2, bV0);
+                        float d21 = glm::dot(bV2, bV1);
 
-                    uint8_t rCol = static_cast<uint8_t>(glm::clamp(avgColor.r * 255.0f, 0.0f, 255.0f));
-                    uint8_t gCol = static_cast<uint8_t>(glm::clamp(avgColor.g * 255.0f, 0.0f, 255.0f));
-                    uint8_t bCol = static_cast<uint8_t>(glm::clamp(avgColor.b * 255.0f, 0.0f, 255.0f));
+                        float v = (d11 * d20 - d01 * d21) * invBaryDenom;
+                        float w = (d00 * d21 - d01 * d20) * invBaryDenom;
+                        float u = 1.0f - v - w;
 
-                    uint32_t packedData = IceBrick::Renderer::Voxel::Pack(rCol, gCol, bCol, 1);
+                        u = std::max(u, 0.0f);
+                        v = std::max(v, 0.0f);
+                        w = std::max(w, 0.0f);
 
+                        float sum = u + v + w;
+                        if(sum > 1e-8f)
+                            bary = glm::vec3(u, v, w) / sum;
+                    }
+
+                    glm::vec2 uv = bary.x * V0.uv + bary.y * V1.uv + bary.z * V2.uv;
+
+                    glm::vec3 finalColor = SampleTexture(data.texture, uv);
+                    
+                    
                     size_t flatIndex = static_cast<size_t>(z) * (GRID_SIZE * GRID_SIZE) + static_cast<size_t>(y) * (GRID_SIZE) + static_cast<size_t>(x);
 
-                    vMesh.VoxelMesh[flatIndex].data = packedData;
+                    accum[flatIndex].colorSum += finalColor;
+                    accum[flatIndex].count++;
                     voxels++;
                 }
             }
         }
-
-
     }
+
+    for(size_t i = 0; i < accum.size(); i++)
+    {
+        if(accum[i].count == 0) continue;
+
+        glm::vec3 avgColor = accum[i].colorSum / static_cast<float>(accum[i].count);
+
+        uint8_t rCol = static_cast<uint8_t>(glm::clamp(avgColor.r * 255.0f, 0.0f, 255.0f));
+        uint8_t gCol = static_cast<uint8_t>(glm::clamp(avgColor.g * 255.0f, 0.0f, 255.0f));
+        uint8_t bCol = static_cast<uint8_t>(glm::clamp(avgColor.b * 255.0f, 0.0f, 255.0f));
+    
+        rCol = Quantize5BitTo8(rCol);
+        gCol = Quantize5BitTo8(gCol);
+        bCol = Quantize5BitTo8(bCol);
+
+        vMesh.VoxelMesh[i].data = IceBrick::Renderer::Voxel::Pack(rCol, gCol, bCol, 1);
+    }
+
     spdlog::info("Successfully voxelized mesh. {}",voxels);
 
 

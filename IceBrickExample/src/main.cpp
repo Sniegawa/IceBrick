@@ -152,7 +152,8 @@ int main(int argc, char** argv)
 
     unsigned int VoxelRenderNative = static_cast<unsigned int>(reinterpret_cast<uintptr_t>(device->GetTextureNativeHandle(renderer.GetOutTextureHandle())));
 
-    MeshData meshData = Load("../../../IceBrickExample/src/Dragon.gltf");
+    //MeshData meshData = Load("../../../IceBrickExample/src/Dragon.gltf");
+    MeshData meshData = Load("../../../IceBrickExample/src/MaterialsVariantsShoe.glb");
     VoxelMesh voxelizedMesh = Voxelize(meshData);
 
     renderer.UploadVoxelData(voxelizedMesh.VoxelMesh);
