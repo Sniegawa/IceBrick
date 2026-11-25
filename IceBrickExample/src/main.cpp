@@ -61,6 +61,7 @@ struct SceneData
     glm::vec4 camFront;
     glm::vec4 camUp;
     glm::vec4 camRight;
+    glm::ivec4 debugInfo = glm::ivec4(0,100,0,0);
 };
 
 
@@ -179,6 +180,10 @@ int main(int argc, char** argv)
             bool flag = false;
             if(ImGui::DragFloat3("Sun direction", glm::value_ptr(sceneData.SunDir),0.05f,-1.0f,1.0f)) flag = true;
             if(ImGui::ColorPicker3("Background color", glm::value_ptr(sceneData.BackgroundColor))) flag = true;
+            if(ImGui::DragInt("Debug mode", &sceneData.debugInfo.x,1,0,1)) flag = true;
+            if(ImGui::DragInt("Debug threshold", &sceneData.debugInfo.y,1,20,1000)) flag = true;
+
+
             if(flag)
                 device->Upload<SceneData>(SceneDataBuffer,sceneData);
 

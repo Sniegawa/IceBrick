@@ -116,6 +116,7 @@ MeshData Load(const std::filesystem::path& filepath)
 VoxelMesh Voxelize(MeshData data)
 {
     VoxelMesh vMesh;
+    size_t voxels = 0;
 
     constexpr size_t GRID_SIZE = IceBrick::Renderer::GRID_SIZE;
 
@@ -269,13 +270,14 @@ VoxelMesh Voxelize(MeshData data)
                     size_t flatIndex = static_cast<size_t>(z) * (GRID_SIZE * GRID_SIZE) + static_cast<size_t>(y) * (GRID_SIZE) + static_cast<size_t>(x);
 
                     vMesh.VoxelMesh[flatIndex].data = packedData;
+                    voxels++;
                 }
             }
         }
 
 
     }
-
+    spdlog::info("Successfully voxelized mesh. {}",voxels);
 
 
     return vMesh;

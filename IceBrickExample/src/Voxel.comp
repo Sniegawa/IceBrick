@@ -16,7 +16,7 @@ struct Ray
     vec3 direction;
 };
 
-const int GRID_SIZE = 256;
+const int GRID_SIZE = 512;
 
 
 layout(std430, binding = 1) readonly buffer VoxelGrid
@@ -33,6 +33,7 @@ layout(std140, binding = 2) uniform SceneDataBuffer
     vec4 u_CamFront;
     vec4 u_CamUp;
     vec4 u_CamRight;
+    ivec4 debugInfo;
 };
 
 uint GetVoxel(ivec3 pos)
@@ -63,10 +64,40 @@ bool boundsCheck(ivec3 pos)
 }
 
 
+vec3 DebugHeatmap(uint checks, int threshold)
+{
+    if (float(checks) >= threshold)
+        return vec3(1.0); // Pure white once over budget
+
+    float t = clamp(float(checks) / float(threshold), 0.0, 1.0);
+
+    // Optional: boost low/mid step counts into rich purple/magenta instead of black
+    // t = sqrt(t);
+
+    const vec3 stops[8] = vec3[8](
+        vec3(0.001, 0.000, 0.014), // Near-black indigo
+        vec3(0.114, 0.047, 0.276), // Dark indigo
+        vec3(0.320, 0.055, 0.427), // Royal purple
+        vec3(0.525, 0.125, 0.415), // Magenta-violet
+        vec3(0.735, 0.216, 0.330), // Crimson-coral
+        vec3(0.910, 0.376, 0.175), // Fiery orange
+        vec3(0.988, 0.645, 0.039), // Glowing amber-yellow
+        vec3(0.995, 0.960, 0.680)  // Pale incandescent yellow
+    );
+
+    float scaled = t * 7.0;
+    int idx = min(int(scaled), 6);
+    float frac = scaled - float(idx);
+
+    return mix(stops[idx], stops[idx + 1], frac);
+}
 void main()
 {
     vec2 pixel = vec2(gl_GlobalInvocationID.xy);
     vec2 res = vec2(imageSize(u_OutputImage));
+
+    if(pixel.x >= res.x || pixel.y >= res.y)
+        return;
 
     vec2 screenPos = (pixel + 0.5) / res * 2.0 - 1.0;
 
@@ -127,9 +158,13 @@ void main()
 
     vec3 color = u_BackgroundColor.xyz;
     ivec3 mask = ivec3(0);
+    
+    // Debug info
+    uint checks = 0;
 
     while(boundsCheck(voxel))
     {
+        checks++;
         uint voxelData = GetVoxel(voxel);
         if(isVoxelSolid(voxelData))
         {
@@ -175,6 +210,8 @@ void main()
         }
 
     }
+    if(debugInfo.x == 1)
+        color = DebugHeatmap(checks,debugInfo.y);
 
     imageStore(u_OutputImage, ivec2(pixel), vec4(color,1.0));
 
