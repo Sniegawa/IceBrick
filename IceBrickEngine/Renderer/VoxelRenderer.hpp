@@ -31,12 +31,12 @@ namespace IceBrick::Renderer
 
         void Draw();
 
-        void UploadVoxelData(std::span<Voxel> data);
+        void UploadVoxelData(std::span<Voxel> data, int mip);
 
         RHI::TextureHandle GetOutTextureHandle() { return m_OutputTexture; }
 
     private:
-        RHI::BufferHandle m_VoxelBuffer;
+        RHI::TextureHandle m_VoxelTexture;
         RHI::TextureHandle m_OutputTexture;
 
         RHI::PipelineResources m_VoxelPipelineResources;

@@ -1,6 +1,7 @@
 #include "VoxelRenderer.hpp"
 #include "RHI/rhi.hpp"
 #include "RHI/rhi_handles.hpp"
+#include "RHI/rhi_types.hpp"
 #include "Renderer/VoxelFormat.hpp"
 
 #include <filesystem>
@@ -45,18 +46,24 @@ namespace IceBrick::Renderer
 
         m_OutputTexture = device->CreateTexture(outTexture);
 
+        RHI::TextureDescription voxelTexDescription;
+        voxelTexDescription.width = GRID_SIZE;
+        voxelTexDescription.height = GRID_SIZE;
+        voxelTexDescription.depth = GRID_SIZE;
 
-        RHI::BufferDescription VoxelBufdesc;
-        VoxelBufdesc.sizeInBytes = sizeof(Voxel) * GRID_SIZE * GRID_SIZE * GRID_SIZE;
-        VoxelBufdesc.memoryAccess = RHI::BufferMemoryAccess::CpuToGpu;
+        voxelTexDescription.format = RHI::TextureFormat::R32_UINT;
+        voxelTexDescription.type = RHI::TextureType::Texture3D;
+        voxelTexDescription.usage = RHI::TextureUsage::Sampled;
+        voxelTexDescription.filter = RHI::TextureFilter::Nearest;
+        voxelTexDescription.generateMips = true;
 
-        m_VoxelBuffer = device->CreateBuffer(VoxelBufdesc);
+        m_VoxelTexture = device->CreateTexture(voxelTexDescription);
 
         std::string voxelSource = ReadShaderFile("../../../IceBrickExample/src/Voxel.comp");
         m_VoxelPipeline = device->CreateComputePipeline(voxelSource);
 
         m_VoxelPipelineResources.SetStorageImage(0, m_OutputTexture);
-        m_VoxelPipelineResources.SetStorageBuffer(1, m_VoxelBuffer);
+        m_VoxelPipelineResources.SetTexture(1, m_VoxelTexture);
         m_VoxelPipelineResources.SetUniformBuffer(2, sceneDataBuffer);
     }
     VoxelRenderer::~VoxelRenderer()
@@ -64,7 +71,7 @@ namespace IceBrick::Renderer
         auto* device = RHI::GetDevice();
 
         device->DestroyTexture(m_OutputTexture);
-        device->DeleteBuffer(m_VoxelBuffer);
+        device->DestroyTexture(m_VoxelTexture);
         device->DestroyPipeline(m_VoxelPipeline);
     }
 
@@ -86,8 +93,8 @@ namespace IceBrick::Renderer
         device->InsertImageMemoryBarrier();
     }
 
-    void VoxelRenderer::UploadVoxelData(std::span<Voxel> data)
+    void VoxelRenderer::UploadVoxelData(std::span<Voxel> data, int mip)
     {
-        RHI::GetDevice()->Upload<Voxel>(m_VoxelBuffer,data);
+        RHI::GetDevice()->SetTextureData(m_VoxelTexture,data.data(),data.size_bytes(), mip);
     }
 }

@@ -26,7 +26,7 @@ namespace IceBrick::RHI
 
         // Data transfer
         virtual void SetBufferData(BufferHandle handle, const void* data, size_t size, uint32_t offset = 0) = 0;
-        virtual void SetTextureData(TextureHandle handle, const void* data, size_t size) = 0;
+        virtual void SetTextureData(TextureHandle handle, const void* data, size_t size, int mip = 0) = 0;
 
         virtual void GetBufferData(BufferHandle handle, void* outData, size_t size, uint32_t offset = 0) = 0;
 

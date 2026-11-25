@@ -32,9 +32,11 @@ struct MeshData
 struct VoxelMesh
 {
     std::vector<IceBrick::Renderer::Voxel> VoxelMesh;
+    std::vector<std::vector<IceBrick::Renderer::Voxel>> Mips;
 };
 
 MeshData Load(const std::filesystem::path& filepath);
 
 
 VoxelMesh Voxelize(MeshData data);
+

@@ -18,11 +18,7 @@ struct Ray
 
 const int GRID_SIZE = 512;
 
-
-layout(std430, binding = 1) readonly buffer VoxelGrid
-{
-    Voxel voxels[];
-};
+layout(binding = 1) uniform usampler3D u_VoxelGrid;
 
 layout(std140, binding = 2) uniform SceneDataBuffer
 {
@@ -38,8 +34,7 @@ layout(std140, binding = 2) uniform SceneDataBuffer
 
 uint GetVoxel(ivec3 pos)
 {
-        int flatIndex = pos.z * (GRID_SIZE * GRID_SIZE) + pos.y * GRID_SIZE + pos.x;
-    return voxels[flatIndex].material;
+    return texelFetch(u_VoxelGrid, pos, 0).r;
 }
 
 vec3 UnpackVoxelColor(uint voxelData)
@@ -58,9 +53,7 @@ bool isVoxelSolid(uint voxelData)
 
 bool boundsCheck(ivec3 pos)
 {
-    return !( pos.x < 0 || pos.x >= GRID_SIZE ||
-        pos.y < 0 || pos.y >= GRID_SIZE ||
-        pos.z < 0 || pos.z >= GRID_SIZE);
+    return all(greaterThanEqual(pos, ivec3(0))) && all(lessThan(pos, ivec3(GRID_SIZE)));
 }
 
 
@@ -158,6 +151,14 @@ void main()
 
     vec3 color = u_BackgroundColor.xyz;
     ivec3 mask = ivec3(0);
+    if(tEntry > 0.0)
+    {
+        mask = ivec3(
+                int(tNear.x >= tNear.y && tNear.x >= tNear.z),
+                int(tNear.y > tNear.x && tNear.y >= tNear.z),
+                int(tNear.z > tNear.x && tNear.z > tNear.y)
+                );
+    }
     
     // Debug info
     uint checks = 0;

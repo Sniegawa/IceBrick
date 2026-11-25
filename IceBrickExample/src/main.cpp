@@ -100,63 +100,18 @@ int main(int argc, char** argv)
     Renderer::VoxelRenderer renderer(SceneDataBuffer);
 
 
-    constexpr int GRID_SIZE = Renderer::GRID_SIZE;
-    std::vector<Renderer::Voxel> voxelGrid(GRID_SIZE * GRID_SIZE * GRID_SIZE,{0});
-
-    float center = GRID_SIZE / 2.0f;
-    float majorRadius = 40.0f; 
-    float minorRadius = 10.0f;
-
-    std::mt19937 rng(6767);
-    std::uniform_int_distribution<int> colorDist(0,255);
-
-    for (int z = 0; z < GRID_SIZE; ++z) {
-        for (int y = 0; y < GRID_SIZE; ++y) {
-            for (int x = 0; x < GRID_SIZE; ++x) {
-            
-                float dx = x - center;
-                float dy = y - center; 
-                float dz = z - center;
-            
-                float distXZ = std::sqrt(dx*dx + dz*dz);
-            
-                float distToTube = distXZ - majorRadius;
-            
-                if ((distToTube * distToTube + dy * dy) <= (minorRadius * minorRadius)) {
-                
-                    size_t flatIndex = z * (GRID_SIZE * GRID_SIZE) + y * GRID_SIZE + x;
-                
-                    uint8_t r = static_cast<uint8_t>(colorDist(rng));
-                    uint8_t g = static_cast<uint8_t>(colorDist(rng));
-                    uint8_t b = static_cast<uint8_t>(colorDist(rng));
-
-                    voxelGrid[flatIndex].data = Renderer::Voxel::Pack(r, g, b, 1);
-               }
-
-                if(y == 0)
-                { 
-                    size_t flatIndex = z * (GRID_SIZE * GRID_SIZE) + y * GRID_SIZE + x;
-
-                    uint8_t r = static_cast<uint8_t>(colorDist(rng));
-                    uint8_t g = static_cast<uint8_t>(colorDist(rng));
-                    uint8_t b = static_cast<uint8_t>(colorDist(rng));
-
-                    voxelGrid[flatIndex].data = Renderer::Voxel::Pack(r, g, b, 1);               
-                }
-            }
-        }
-    }
-    
-    renderer.UploadVoxelData(voxelGrid);
-
-
     unsigned int VoxelRenderNative = static_cast<unsigned int>(reinterpret_cast<uintptr_t>(device->GetTextureNativeHandle(renderer.GetOutTextureHandle())));
 
     //MeshData meshData = Load("../../../IceBrickExample/src/Dragon.gltf");
     MeshData meshData = Load("../../../IceBrickExample/src/MaterialsVariantsShoe.glb");
     VoxelMesh voxelizedMesh = Voxelize(meshData);
 
-    renderer.UploadVoxelData(voxelizedMesh.VoxelMesh);
+    renderer.UploadVoxelData(voxelizedMesh.VoxelMesh, 0);
+
+    for(int i = 0; i < voxelizedMesh.Mips.size(); i++)
+    {
+        renderer.UploadVoxelData(voxelizedMesh.Mips[i], i+1);
+    }
 
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;

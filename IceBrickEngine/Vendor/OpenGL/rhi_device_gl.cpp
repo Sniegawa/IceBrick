@@ -220,11 +220,20 @@ namespace IceBrick::RHI
         glNamedBufferSubData(node.glID, offset, size, data);
     }
 
-    void GLRenderDevice::SetTextureData(TextureHandle handle, const void* data, size_t size)
+    void GLRenderDevice::SetTextureData(TextureHandle handle, const void* data, size_t size, int mip)
     {
         GLTextureNode& node = GetTextureNode(handle);
         
-        size_t expectedSize = node.width * node.height * node.depth * GetBytesPerPixel(node.format);
+        if(mip < 0 || static_cast<uint32_t>(mip) >= node.mipLevels)
+        {
+            spdlog::error("Invalid mip level {} (allocated levels: {})", mip, node.mipLevels);
+        }
+
+        uint32_t mipWidth = std::max(1u, node.width >> mip);
+        uint32_t mipHeight = std::max(1u, node.height >> mip);
+        uint32_t mipDepth = std::max(1u, node.depth >> mip);
+
+        size_t expectedSize = mipWidth * mipHeight * mipDepth * GetBytesPerPixel(node.format);
         if(size != expectedSize)
         {
             spdlog::error("Texture upload bounds mismatch! Format requires {} bytes, but {} bytes were passed",expectedSize, size);
@@ -240,11 +249,11 @@ namespace IceBrick::RHI
             glTextureSubImage2D
                 (
                     node.glID,
+                    mip,
                     0,
                     0,
-                    0,
-                    node.width,
-                    node.height,
+                    mipWidth,
+                    mipHeight,
                     format,
                     type,
                     data
@@ -255,22 +264,18 @@ namespace IceBrick::RHI
             glTextureSubImage3D
                 (
                     node.glID,
+                    mip,
                     0,
                     0,
                     0,
-                    0,
-                    node.width,
-                    node.height,
-                    node.depth,
+                    mipWidth,
+                    mipHeight,
+                    mipDepth,
                     format,
                     type,
                     data
                 );
         }
-        
-        if(node.mipLevels > 1)
-            glGenerateTextureMipmap(node.glID);
-
     }
 
     void GLRenderDevice::GetBufferData(BufferHandle handle, void* outData, size_t size, uint32_t offset)

@@ -209,6 +209,64 @@ MeshData Load(const std::filesystem::path& filepath)
     return result;
 }
 
+
+void GenerateSupercoverMips(VoxelMesh& mesh, uint32_t gridSize, uint32_t totalMipLevels)
+{
+    mesh.Mips.clear();
+    if(totalMipLevels <= 1 || gridSize <= 1)
+        return;
+
+    mesh.Mips.reserve(totalMipLevels - 1);
+
+    uint32_t prevDim = gridSize;
+    for(uint32_t level = 1; level < totalMipLevels; level++)
+    {
+        uint32_t currDim = std::max(1u, prevDim >> 1);
+        std::vector<IceBrick::Renderer::Voxel> currMip(static_cast<size_t>(currDim) * currDim * currDim);
+
+        auto readPrev = [&](uint32_t x, uint32_t y, uint32_t z) -> uint32_t // Yuck
+        {
+            size_t idx = static_cast<size_t>(z) * prevDim * prevDim + y * prevDim + x;
+            if(level == 1)
+                return mesh.VoxelMesh[idx].data;
+            return mesh.Mips[level - 2][idx].data;
+        };
+
+        for(uint32_t z = 0; z < currDim; z++)
+        {
+            uint32_t z0 = z * 2;
+            uint32_t z1 = std::min(z0 + 1, prevDim - 1);
+
+            for(uint32_t y = 0; y < currDim; y++)
+            {
+                uint32_t y0 = y * 2;
+                uint32_t y1 = std::min(y0 + 1, prevDim - 1);
+
+                for(uint32_t x = 0; x < currDim; x++)
+                {
+                    uint32_t x0 = x * 2;
+                    uint32_t x1 = std::min(x0 + 1, prevDim - 1);
+
+                    uint32_t acc = 
+                        readPrev(x0, y0, z0) | readPrev(x1, y0, z0) |
+                        readPrev(x0, y1, z0) | readPrev(x1, y1, z0) |
+                        readPrev(x0, y0, z1) | readPrev(x1, y0, z1) |
+                        readPrev(x0, y1, z1) | readPrev(x1, y1, z1);
+
+                    size_t dstIdx = static_cast<size_t>(z) * currDim * currDim + y * currDim + x;
+                    currMip[dstIdx].data = (acc != 0u) ? 1u : 0u;
+                }
+            }
+        }
+
+        mesh.Mips.push_back(std::move(currMip));
+        prevDim = currDim;
+        if(prevDim == 1)
+            break;
+    }
+}
+
+
 glm::vec3 SampleTexture(const TextureData& tex, glm::vec2 uv)
 {
     if(tex.pixels.empty() || tex.width == 0 || tex.height == 0)
@@ -446,6 +504,7 @@ VoxelMesh Voxelize(MeshData data)
 
     spdlog::info("Successfully voxelized mesh. {}",voxels);
 
+    GenerateSupercoverMips(vMesh, GRID_SIZE, 5);
 
     return vMesh;
 }
