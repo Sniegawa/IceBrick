@@ -142,6 +142,7 @@ namespace IceBrick::RHI
         node.height = description.height;
         node.depth = description.depth;
         node.format = description.format;
+        node.type = description.type;
         node.active = true;
         if(description.generateMips)
             node.mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(description.width, description.height)))) + 1;
