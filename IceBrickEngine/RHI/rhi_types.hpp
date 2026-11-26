@@ -109,4 +109,18 @@ namespace IceBrick::RHI
         ReadWrite
     };
 
+    enum class MemoryBarrierBits : uint32_t
+    {
+        ShaderImageAccess = 1 << 0,
+        TextureFetch = 1 << 1,
+        ShaderStorage = 1 << 2
+    };
+
+    inline MemoryBarrierBits operator|(MemoryBarrierBits a, MemoryBarrierBits b)
+    {
+        return static_cast<MemoryBarrierBits>(
+                static_cast<uint32_t>(a) | static_cast<uint32_t>(b)
+        );
+    }
+
 };

@@ -28,6 +28,7 @@ namespace IceBrick::RHI
             uint64_t handleID = 0;
             ResourceType type = ResourceType::None;
             ImageAccess access = ImageAccess::ReadWrite; // Only used for type StorageImage
+            uint32_t mipLevel = 0; // Only used for StorageImage
         };
         
         void SetStorageBuffer(uint32_t binding, BufferHandle handle)
@@ -46,9 +47,9 @@ namespace IceBrick::RHI
             m_Bindings[binding] = {handle.id, ResourceType::Texture };
         }
 
-        void SetStorageImage(uint32_t binding, TextureHandle handle, ImageAccess access = ImageAccess::ReadWrite)
+        void SetStorageImage(uint32_t binding, TextureHandle handle, ImageAccess access = ImageAccess::ReadWrite, uint32_t mip = 0)
         {
-            m_Bindings[binding] = {handle.id, ResourceType::StorageImage, access};
+            m_Bindings[binding] = {handle.id, ResourceType::StorageImage, access, mip};
         }
 
 
@@ -70,7 +71,7 @@ namespace IceBrick::RHI
                     device->BindTexture(m_SetIndex, binding, {slot.handleID});
 
                 else if(slot.type == ResourceType::StorageImage)
-                    device->BindImage(m_SetIndex, binding, {slot.handleID}, slot.access);
+                    device->BindImage(m_SetIndex, binding, {slot.handleID}, slot.access, slot.mipLevel);
             }
         }
 

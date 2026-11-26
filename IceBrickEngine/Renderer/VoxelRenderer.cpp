@@ -4,33 +4,10 @@
 #include "RHI/rhi_types.hpp"
 #include "Renderer/VoxelFormat.hpp"
 
-#include <filesystem>
-#include <fstream>
-#include <spdlog/spdlog.h>
+#include "Core/IOHelper.hpp"
 
 namespace IceBrick::Renderer 
 {
-    std::string ReadShaderFile(const std::filesystem::path& filepath)
-    {
-        std::ifstream file(filepath, std::ios::ate | std::ios::binary);
-            
-        if (!file.is_open()) {
-            spdlog::error("Failed to open shader file: {}", filepath.string());
-            return "";
-        }
-
-        // Grab the size, allocate the string, and rewind to the start
-        size_t fileSize = static_cast<size_t>(file.tellg());
-        std::string buffer(fileSize, '\0');
-        file.seekg(0);
-        
-        // Read the entire file in one blocking system call
-        file.read(buffer.data(), fileSize);
-        file.close();
-
-        return buffer;
-    }
-
     VoxelRenderer::VoxelRenderer(RHI::BufferHandle sceneDataBuffer)
     {
         auto* device = RHI::GetDevice();
@@ -57,21 +34,33 @@ namespace IceBrick::Renderer
         voxelTexDescription.filter = RHI::TextureFilter::Nearest;
         voxelTexDescription.generateMips = true;
 
-        m_VoxelTexture = device->CreateTexture(voxelTexDescription);
+        m_Volume.texture = device->CreateTexture(voxelTexDescription);
 
-        std::string voxelSource = ReadShaderFile("../../../IceBrickExample/src/Voxel.comp");
+        uint32_t mipLevels = static_cast<uint32_t>(std::floor(std::log2(GRID_SIZE))) + 1;
+        m_Volume.mipLevels = mipLevels;
+        m_Volume.dimensions = glm::ivec3(GRID_SIZE);
+
+        RHI::BufferDescription raycastHitDesc;
+        raycastHitDesc.sizeInBytes = sizeof(RaycastHit);
+        raycastHitDesc.usage = RHI::BufferUsage::StorageBuffer;
+        raycastHitDesc.memoryAccess = RHI::BufferMemoryAccess::GpuToCpu;
+        m_RaycastHitBuffer = device->CreateBuffer(raycastHitDesc);
+
+        std::string voxelSource = ReadShaderFile("../../../IceBrickEngine/Renderer/Voxel.comp");
         m_VoxelPipeline = device->CreateComputePipeline(voxelSource);
 
         m_VoxelPipelineResources.SetStorageImage(0, m_OutputTexture);
-        m_VoxelPipelineResources.SetTexture(1, m_VoxelTexture);
+        m_VoxelPipelineResources.SetTexture(1, m_Volume.texture);
         m_VoxelPipelineResources.SetUniformBuffer(2, sceneDataBuffer);
+        m_VoxelPipelineResources.SetStorageBuffer(3, m_RaycastHitBuffer);
     }
     VoxelRenderer::~VoxelRenderer()
     {
         auto* device = RHI::GetDevice();
 
         device->DestroyTexture(m_OutputTexture);
-        device->DestroyTexture(m_VoxelTexture);
+        device->DestroyTexture(m_Volume.texture);
+        device->DeleteBuffer(m_RaycastHitBuffer);
         device->DestroyPipeline(m_VoxelPipeline);
     }
 
@@ -90,11 +79,19 @@ namespace IceBrick::Renderer
                 1
         );
 
-        device->InsertImageMemoryBarrier();
+        device->InsertImageMemoryBarrier(RHI::MemoryBarrierBits::ShaderImageAccess);
     }
 
     void VoxelRenderer::UploadVoxelData(std::span<Voxel> data, int mip)
     {
-        RHI::GetDevice()->SetTextureData(m_VoxelTexture,data.data(),data.size_bytes(), mip);
+        RHI::GetDevice()->SetTextureData(m_Volume.texture, data.data(), data.size_bytes(), mip);
+    }
+
+    RaycastHit VoxelRenderer::getHitData()
+    {
+        RaycastHit hit;
+        auto* device = RHI::GetDevice();
+        device->GetBufferData(m_RaycastHitBuffer, &hit, sizeof(RaycastHit));
+        return hit;
     }
 }

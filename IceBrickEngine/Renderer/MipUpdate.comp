@@ -1,0 +1,41 @@
+#version 450
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
+
+layout(r16ui, binding = 0) uniform readonly uimage3D u_SrcMip;
+layout(r16ui, binding = 1) uniform writeonly uimage3D u_DstMip;
+
+layout(std140, binding = 2) uniform EditParamsBuffer
+{
+    ivec4 u_DirtyMin;
+    ivec4 u_DirtyMax;
+    vec4 u_BrushPos;
+    uvec4 u_Payload;
+};
+
+void main()
+{
+    ivec3 dst = u_DirtyMin.xyz + ivec3(gl_GlobalInvocationID.xyz);
+
+    if(any(greaterThan(dst, u_DirtyMax.xyz)))
+        return;
+
+    ivec3 baseSrc = dst * 2;
+    ivec3 srcMax = imageSize(u_SrcMip) - ivec3(1);
+    uint acc = 0u;
+
+    for(int z = 0; z < 2; z++)
+    {
+        for(int y = 0; y < 2; y++)
+        {
+            for(int x = 0; x < 2; x++)
+            {
+                ivec3 srcPos = min(baseSrc + ivec3(x, y, z), srcMax);
+                acc |= imageLoad(u_SrcMip, srcPos).r;
+            }
+        }
+    }
+
+    uint solid = (acc != 0u) ? 1u : 0u;
+    imageStore(u_DstMip, dst, uvec4(solid, 0u, 0u, 0u));
+}

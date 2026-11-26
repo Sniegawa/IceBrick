@@ -1,5 +1,6 @@
 #pragma once
 
+#include "glm/ext/vector_int3.hpp"
 #include <cstdint>
 namespace IceBrick::Renderer
 {
@@ -18,4 +19,11 @@ namespace IceBrick::Renderer
 
     static_assert(sizeof(Voxel) == 2);
 
+    struct alignas(16) RaycastHit
+    {
+        glm::ivec3 cell;
+        uint32_t valid;
+        glm::ivec3 normal;
+        uint32_t pad;
+    };
 };

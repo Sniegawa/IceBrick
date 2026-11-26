@@ -23,7 +23,9 @@ target_sources(IceBrickEngine PRIVATE
     Core/Window.cpp
     Core/WindowInput.cpp
     Core/InputManager.cpp
+    Core/IOHelper.cpp
     Renderer/VoxelRenderer.cpp
+    Renderer/VoxelModifier.cpp
 )
 
 target_include_directories(IceBrickEngine

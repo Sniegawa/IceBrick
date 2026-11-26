@@ -4,6 +4,7 @@
 #include "RHI/rhi_handles.hpp"
 #include <cstdlib>
 #include <vector>
+#include "RHI/rhi_types.hpp"
 #include "spdlog/spdlog.h"
 
 namespace IceBrick::RHI
@@ -67,7 +68,7 @@ namespace IceBrick::RHI
         virtual void BindStorageBuffer(uint32_t set, uint32_t binding, BufferHandle handle)override;
 
         virtual void BindTexture(uint32_t set, uint32_t binding, TextureHandle handle)override;
-        virtual void BindImage(uint32_t set, uint32_t binding, TextureHandle handle, ImageAccess access)override;
+        virtual void BindImage(uint32_t set, uint32_t binding, TextureHandle handle, ImageAccess access, int mip = 0) override;
 
         // Pipelines
         virtual PipelineHandle CreateComputePipeline(std::string_view computeShaderSource) override;
@@ -75,7 +76,7 @@ namespace IceBrick::RHI
 
         virtual void BindComputePipeline(PipelineHandle handle) override;
         virtual void DispatchCompute(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) override;
-        virtual void InsertImageMemoryBarrier() override;
+        virtual void InsertImageMemoryBarrier(MemoryBarrierBits barrier) override;
 
 
 

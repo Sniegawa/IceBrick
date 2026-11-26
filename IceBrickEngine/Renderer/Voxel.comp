@@ -24,6 +24,14 @@ layout(std140, binding = 2) uniform SceneDataBuffer
     ivec4 debugInfo;
 };
 
+layout(std430, binding = 3) writeonly buffer RaycastPickBuffer
+{
+    ivec3 u_HitCell;
+    uint u_HitValid;
+    ivec3 u_HitNormal;
+    uint u_Pad;
+};
+
 uint GetVoxel(ivec3 pos, int lod)
 {
     return texelFetch(u_VoxelGrid, pos, lod).r;
@@ -77,6 +85,10 @@ void main()
 
     if(pixel.x >= res.x || pixel.y >= res.y)
         return;
+
+    bool isCenterPixel = all(equal(ivec2(pixel), ivec2(res) / 2));
+    if(isCenterPixel)
+        u_HitValid = 0u;
 
     vec2 screenPos = (pixel + 0.5) / res * 2.0 - 1.0;
 
@@ -166,6 +178,13 @@ void main()
                 float diffuse = max(dot(normal, lightDir), 0.1);
                 color = baseColor * diffuse;
 
+                if(isCenterPixel)
+                {
+                    u_HitCell = cell;
+                    u_HitNormal = ivec3(mask * vec3(-step));
+                    u_HitValid = 1u;
+                }
+
                 break;
             }
 
@@ -225,6 +244,9 @@ void main()
         }
 
     }
+    if(isCenterPixel)
+        color = vec3(1.0) - color; // dot crosshair
+
     if(debugInfo.x == 1)
         color = DebugHeatmap(checks,debugInfo.y);
 

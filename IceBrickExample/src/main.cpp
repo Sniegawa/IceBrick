@@ -5,21 +5,18 @@
 #include "RHI/rhi_handles.hpp"
 #include "RHI/rhi_types.hpp"
 #include "Renderer/VoxelFormat.hpp"
+#include "Renderer/VoxelModifier.hpp"
 #include "Renderer/VoxelRenderer.hpp"
 
-#include <cmath>
 #include <cstdint>
-#include <fstream>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <random>
 #include <spdlog/spdlog.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
 #include <GLFW/glfw3.h>
-#include <string>
 #include <filesystem>
 
 
@@ -27,27 +24,6 @@
 #include "Voxelizer.hpp"
 
 using namespace IceBrick;
-
-std::string ReadShaderFile(const std::filesystem::path& filepath)
-{
-    std::ifstream file(filepath, std::ios::ate | std::ios::binary);
-        
-    if (!file.is_open()) {
-            spdlog::error("Failed to open shader file: {}", filepath.string());
-            return "";
-        }
-
-        // Grab the size, allocate the string, and rewind to the start
-        size_t fileSize = static_cast<size_t>(file.tellg());
-        std::string buffer(fileSize, '\0');
-        file.seekg(0);
-        
-        // Read the entire file in one blocking system call
-        file.read(buffer.data(), fileSize);
-        file.close();
-
-        return buffer;
-}
 
 Camera camera;
 bool isCameraActive = false;
@@ -98,7 +74,18 @@ int main(int argc, char** argv)
 
 
     Renderer::VoxelRenderer renderer(SceneDataBuffer);
+    Renderer::VoxelModifier modifier;
+    Renderer::VoxelBrush brush;
+    brush.radius    = 10.0f;
+    brush.voxelData = Renderer::Voxel::Pack(255, 110, 30, true); 
+    brush.shape     = Renderer::BrushShape::Sphere;
+    brush.op        = Renderer::BrushOp::Place;
+    glm::vec3 RawBrushColor = glm::vec3(0.0f);
 
+
+
+
+    Renderer::VoxelVolumeRef volumeRef = renderer.getVolumeRef();
 
     unsigned int VoxelRenderNative = static_cast<unsigned int>(reinterpret_cast<uintptr_t>(device->GetTextureNativeHandle(renderer.GetOutTextureHandle())));
 
@@ -107,11 +94,10 @@ int main(int argc, char** argv)
     VoxelMesh voxelizedMesh = Voxelize(meshData);
 
     renderer.UploadVoxelData(voxelizedMesh.VoxelMesh, 0);
+    
+    modifier.RebuildMips(volumeRef, glm::ivec3(0), volumeRef.dimensions - 1);
 
-    for(int i = 0; i < voxelizedMesh.Mips.size(); i++)
-    {
-        renderer.UploadVoxelData(voxelizedMesh.Mips[i], i+1);
-    }
+    Renderer::RaycastHit LastHit;
 
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
@@ -121,8 +107,28 @@ int main(int argc, char** argv)
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
+        LastHit = renderer.getHitData();
         glfwPollEvents();
        
+        if(isCameraActive)
+        {
+            bool carve = InputManager::IsKeyPressed(Key::E);
+            bool place = InputManager::IsKeyPressed(Key::Q);
+
+            if ((carve || place) && LastHit.valid)
+            {
+                brush.op = carve ? Renderer::BrushOp::Carve : Renderer::BrushOp::Place;
+                brush.center = carve ? LastHit.cell : (LastHit.cell + LastHit.normal * static_cast<int>(brush.radius));
+
+                auto to8Bit = [](float c) -> uint8_t {
+                    return static_cast<uint8_t>(glm::clamp(c, 0.0f, 1.0f) * 255.0f + 0.5f);
+                };
+                brush.voxelData = Renderer::Voxel::Pack(to8Bit(RawBrushColor.r),to8Bit(RawBrushColor.g),to8Bit(RawBrushColor.b),true);
+
+                modifier.ApplyBrush(volumeRef, brush);
+            }
+        }
+
         renderer.Draw();
         
         ImGui_ImplOpenGL3_NewFrame();
@@ -143,6 +149,15 @@ int main(int argc, char** argv)
             if(flag)
                 device->Upload<SceneData>(SceneDataBuffer,sceneData);
 
+
+            ImGui::Spacing();
+            ImGui::Text("Brush");
+            ImGui::DragFloat("Brush radius", &brush.radius, 0.5f, 1.0f, 40.0f);
+            int shape = static_cast<int>(brush.shape);
+            ImGui::DragInt("Brush type", &shape, 1.0f, 0, 1);
+            brush.shape = static_cast<Renderer::BrushShape>(shape);
+
+            ImGui::ColorEdit3("Brush color", glm::value_ptr(RawBrushColor));
         }
         ImGui::End();
 

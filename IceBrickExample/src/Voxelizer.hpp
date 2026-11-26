@@ -4,6 +4,7 @@
 #include "Renderer/VoxelRenderer.hpp"
 #include "glm/glm.hpp"
 #include <filesystem>
+#include <limits>
 
 struct Vertex
 {
@@ -23,8 +24,8 @@ struct MeshData
 {
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
-    glm::vec3 localMin;
-    glm::vec3 localMax;
+    glm::vec3 localMin = glm::vec3(std::numeric_limits<float>::max());
+    glm::vec3 localMax = glm::vec3(std::numeric_limits<float>::lowest());
 
     TextureData texture;
 };

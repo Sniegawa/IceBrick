@@ -1,0 +1,38 @@
+#version 450
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
+
+layout(r16ui, binding = 0) uniform writeonly uimage3D u_VoxelMip0;
+
+layout(std140, binding = 1) uniform EditParamsBuffer
+{
+    ivec4 u_DirtyMin;// xyz = dirtyMin, w = op (0 = Carve, 1 = Place)
+    ivec4 u_DirtyMax;// xyz = dirtyMax, w = shape (0 = sphere, 1 = box)
+    vec4 u_BrushPos; // xyz - center, w = radius
+    uvec4 u_Payload; // x - packed voxel data
+};
+
+void main()
+{
+    ivec3 pos = u_DirtyMin.xyz + ivec3(gl_GlobalInvocationID.xyz);
+
+    if(any(greaterThan(pos, u_DirtyMax.xyz)))
+        return;
+
+    vec3 delta = vec3(pos) - u_BrushPos.xyz;
+    float radius = u_BrushPos.w;
+
+    if(u_DirtyMax.w == 0)
+    {
+        if(dot(delta, delta) > radius * radius)
+            return;
+    }
+    else
+    {
+        if(any(greaterThan(abs(delta), vec3(radius))))
+            return;
+    }
+
+    uint outVoxel = (u_DirtyMin.w == 0) ? 0u : u_Payload.x;
+    imageStore(u_VoxelMip0, pos, uvec4(outVoxel, 0u, 0u, 0u));
+}

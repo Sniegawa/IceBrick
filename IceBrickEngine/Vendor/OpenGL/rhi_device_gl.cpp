@@ -334,7 +334,7 @@ namespace IceBrick::RHI
         glBindTextureUnit(flatIndex, node.glID);
     }
 
-    void GLRenderDevice::BindImage(uint32_t set, uint32_t binding, TextureHandle handle, ImageAccess access)
+    void GLRenderDevice::BindImage(uint32_t set, uint32_t binding, TextureHandle handle, ImageAccess access, int mip)
     {
         auto& node = GetTextureNode(handle);
         uint32_t flatIndex = CalculateFlatIndex(set, binding);
@@ -345,8 +345,8 @@ namespace IceBrick::RHI
         glBindImageTexture(
                 flatIndex,
                 node.glID,
-                0,
-                (node.type == TextureType::Texture2D ? GL_FALSE : GL_TRUE),
+                mip,
+                (node.type == TextureType::Texture3D ? GL_TRUE : GL_FALSE),
                 0,
                 glAccess,
                 internalFormat
@@ -444,9 +444,26 @@ namespace IceBrick::RHI
         glDispatchCompute(groupCountX,groupCountY,groupCountZ);
     }
 
-    void GLRenderDevice::InsertImageMemoryBarrier()
+    inline GLbitfield TranslateMemoryBarrierToGL(MemoryBarrierBits barrier)
+{
+    GLbitfield flags = 0;
+    const auto mask = static_cast<uint32_t>(barrier);
+
+    if ((mask & static_cast<uint32_t>(MemoryBarrierBits::ShaderImageAccess)) != 0u)
+        flags |= GL_SHADER_IMAGE_ACCESS_BARRIER_BIT;
+
+    if ((mask & static_cast<uint32_t>(MemoryBarrierBits::TextureFetch)) != 0u)
+        flags |= GL_TEXTURE_FETCH_BARRIER_BIT;
+
+    if ((mask & static_cast<uint32_t>(MemoryBarrierBits::ShaderStorage)) != 0u)
+        flags |= GL_SHADER_STORAGE_BARRIER_BIT;
+
+    return flags;
+}
+    void GLRenderDevice::InsertImageMemoryBarrier(MemoryBarrierBits barrier)
     {
-        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
+        GLbitfield flags = TranslateMemoryBarrierToGL(barrier);
+        glMemoryBarrier(flags);
     }
 
 

@@ -3,6 +3,7 @@
 #include "RHI/rhi_handles.hpp"
 #include "RHI/rhi_pipeline_resources.hpp"
 #include "Renderer/VoxelFormat.hpp"
+#include "Renderer/VoxelModifier.hpp" // TODO: Move VoxelVolumeRef somewhere else
 
 #include <glm/glm.hpp>
 #include <span>
@@ -21,7 +22,7 @@ namespace IceBrick::Renderer
         glm::vec4 camRight;
     };
 
-    constexpr size_t GRID_SIZE = 512;
+    constexpr size_t GRID_SIZE = 1024;
 
     class VoxelRenderer
     {
@@ -35,11 +36,17 @@ namespace IceBrick::Renderer
 
         RHI::TextureHandle GetOutTextureHandle() { return m_OutputTexture; }
 
+        RaycastHit getHitData();
+        VoxelVolumeRef getVolumeRef() { return m_Volume; }
+
     private:
-        RHI::TextureHandle m_VoxelTexture;
+        VoxelVolumeRef m_Volume;
         RHI::TextureHandle m_OutputTexture;
+
+        RHI::BufferHandle m_RaycastHitBuffer;
 
         RHI::PipelineResources m_VoxelPipelineResources;
         RHI::PipelineHandle m_VoxelPipeline;
+
     };
 };
