@@ -339,7 +339,7 @@ VoxelMesh Voxelize(MeshData data)
         glm::vec3 N = glm::cross(E0,E1);
 
         glm::ivec3 triMin = glm::floor(glm::min(glm::min(P0,P1),P2)); 
-        glm::ivec3 triMax = glm::ceil(glm::max(glm::max(P0,P1),P2));
+        glm::ivec3 triMax = glm::floor(glm::max(glm::max(P0,P1),P2));
 
         triMin = glm::clamp(triMin, glm::ivec3(0), glm::ivec3(GRID_SIZE - 1));
         triMax = glm::clamp(triMax, glm::ivec3(0), glm::ivec3(GRID_SIZE - 1));

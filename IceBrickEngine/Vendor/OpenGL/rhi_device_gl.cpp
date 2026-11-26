@@ -229,9 +229,9 @@ namespace IceBrick::RHI
             spdlog::error("Invalid mip level {} (allocated levels: {})", mip, node.mipLevels);
         }
 
-        uint32_t mipWidth = std::max(1u, node.width >> mip);
-        uint32_t mipHeight = std::max(1u, node.height >> mip);
-        uint32_t mipDepth = std::max(1u, node.depth >> mip);
+        size_t mipWidth = std::max(1u, node.width >> mip);
+        size_t mipHeight = std::max(1u, node.height >> mip);
+        size_t mipDepth = std::max(1u, node.depth >> mip);
 
         size_t expectedSize = mipWidth * mipHeight * mipDepth * GetBytesPerPixel(node.format);
         if(size != expectedSize)

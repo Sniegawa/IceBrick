@@ -12,7 +12,7 @@ Camera::Camera(glm::vec3 position)
     : m_Position(position),
       m_Yaw(90.0f),
       m_Pitch(0.0f),
-      m_MovementSpeed(15.0f),
+      m_MovementSpeed(50.0f),
       m_MouseSensitivity(0.1f),
       m_FirstMouse(true),
       m_LastX(0.0f),
