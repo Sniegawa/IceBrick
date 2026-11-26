@@ -5,27 +5,17 @@ namespace IceBrick::Renderer
 {
     struct Voxel
     {
-        uint32_t data;
+        uint16_t data;
 
-        static constexpr uint32_t Pack(uint8_t r, uint8_t g, uint8_t b, uint8_t matFlags = 0)
+        static constexpr uint16_t Pack(uint8_t r8, uint8_t g8, uint8_t b8, bool solid)
         {
-            return (
-                    static_cast<uint32_t>(r) << 24 |
-                    static_cast<uint32_t>(g) << 16 |
-                    static_cast<uint32_t>(b) << 8 |
-                    static_cast<uint32_t>(matFlags)
-            );
+            uint16_t r5 = static_cast<uint16_t>(r8 >> 3) & 0x1Fu;
+            uint16_t g5 = static_cast<uint16_t>(g8 >> 3) & 0x1Fu;
+            uint16_t b5 = static_cast<uint16_t>(b8 >> 3) & 0x1Fu;
+            return static_cast<uint16_t>((r5 << 11) | (g5 << 6) | (b5 << 1) | (solid ? 1u : 0u));
         }
-
-        enum Flags : uint8_t
-        {
-            None = 0,
-            Solid = 1 << 0,
-            Emissive = 1 << 1, // Not implemented
-            Transparent = 1 << 2 // Not implemented
-        };
     };
 
-    static_assert(sizeof(Voxel) == 4);
+    static_assert(sizeof(Voxel) == 2);
 
 };

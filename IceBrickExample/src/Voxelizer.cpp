@@ -499,7 +499,7 @@ VoxelMesh Voxelize(MeshData data)
         gCol = Quantize5BitTo8(gCol);
         bCol = Quantize5BitTo8(bCol);
 
-        vMesh.VoxelMesh[i].data = IceBrick::Renderer::Voxel::Pack(rCol, gCol, bCol, 1);
+        vMesh.VoxelMesh[i].data = IceBrick::Renderer::Voxel::Pack(rCol, gCol, bCol, true);
     }
 
     spdlog::info("Successfully voxelized mesh. {}",voxels);

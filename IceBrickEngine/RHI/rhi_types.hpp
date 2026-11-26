@@ -67,6 +67,7 @@ namespace IceBrick::RHI
         RGBA16_FLOAT,
         RGBA32_FLOAT,
         R32_UINT,
+        R16_UINT,
         Depth32_FLOAT
     };
 

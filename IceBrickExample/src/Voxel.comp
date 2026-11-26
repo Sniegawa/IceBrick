@@ -31,9 +31,9 @@ uint GetVoxel(ivec3 pos, int lod)
 
 vec3 UnpackVoxelColor(uint voxelData)
 {
-    float r = float((voxelData >> 24) & 0xFF) / 255.0f;
-    float g = float((voxelData >> 16) & 0xFF) / 255.0f;
-    float b = float((voxelData >> 8) & 0xFF) / 255.0f;
+    float r = float((voxelData >> 11) & 0x1Fu) / 31.0f;
+    float g = float((voxelData >> 6) & 0x1Fu) / 31.0f;
+    float b = float((voxelData >> 1) & 0x1Fu) / 31.0f;
 
     return vec3(r, g, b);
 }

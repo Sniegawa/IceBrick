@@ -13,6 +13,7 @@ namespace IceBrick::RHI
             case TextureFormat::RGBA16_FLOAT:  return GL_RGBA16F;
             case TextureFormat::RGBA32_FLOAT:  return GL_RGBA32F;
             case TextureFormat::R32_UINT:      return GL_R32UI;
+            case TextureFormat::R16_UINT:      return GL_R16UI;
             case TextureFormat::Depth32_FLOAT: return GL_DEPTH_COMPONENT32F;
         }
         spdlog::error("Unknown TextureFormat in TranslateInternalFormatToGL");
@@ -25,6 +26,7 @@ namespace IceBrick::RHI
             case TextureFormat::RGBA16_FLOAT:  return GL_RGBA;
             case TextureFormat::RGBA32_FLOAT:  return GL_RGBA;
             case TextureFormat::R32_UINT:      return GL_RED_INTEGER; 
+            case TextureFormat::R16_UINT:      return GL_RED_INTEGER;
             case TextureFormat::Depth32_FLOAT: return GL_DEPTH_COMPONENT;
         }
         spdlog::error("Unknown TextureFormat in TranslateFormatToGL");
@@ -34,9 +36,10 @@ namespace IceBrick::RHI
     inline GLenum TranslateTypeToGL(TextureFormat format) {
         switch (format) {
             case TextureFormat::RGBA8_UNORM:   return GL_UNSIGNED_BYTE;
-            case TextureFormat::RGBA16_FLOAT:  return GL_FLOAT; 
+            case TextureFormat::RGBA16_FLOAT:  return GL_HALF_FLOAT; 
             case TextureFormat::RGBA32_FLOAT:  return GL_FLOAT;
             case TextureFormat::R32_UINT:      return GL_UNSIGNED_INT;
+            case TextureFormat::R16_UINT:      return GL_UNSIGNED_SHORT;
             case TextureFormat::Depth32_FLOAT: return GL_FLOAT;
         }
         spdlog::error("Unknown TextureFormat in TranslateTypeToGL");
@@ -67,12 +70,14 @@ namespace IceBrick::RHI
         return GL_REPEAT;
     }
 
-    constexpr uint32_t GetBytesPerPixel(TextureFormat format)
+    constexpr size_t GetBytesPerPixel(TextureFormat format)
     {
         switch(format)
         {
+            case TextureFormat::R16_UINT:           return 2;
             case TextureFormat::R32_UINT:           return 4;
             case TextureFormat::RGBA8_UNORM:        return 4;
+            case TextureFormat::Depth32_FLOAT:      return 4;
             case TextureFormat::RGBA16_FLOAT:       return 8;
             case TextureFormat::RGBA32_FLOAT:       return 16;
             default:

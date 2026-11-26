@@ -244,6 +244,12 @@ namespace IceBrick::RHI
         GLenum format = TranslateFormatToGL(node.format);
         GLenum type = TranslateTypeToGL(node.format);
 
+        if (node.format == TextureFormat::R16_UINT)
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        else
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+         
+
         if(node.type == TextureType::Texture2D)
         {
             glTextureSubImage2D

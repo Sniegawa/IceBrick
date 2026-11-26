@@ -51,7 +51,7 @@ namespace IceBrick::Renderer
         voxelTexDescription.height = GRID_SIZE;
         voxelTexDescription.depth = GRID_SIZE;
 
-        voxelTexDescription.format = RHI::TextureFormat::R32_UINT;
+        voxelTexDescription.format = RHI::TextureFormat::R16_UINT;
         voxelTexDescription.type = RHI::TextureType::Texture3D;
         voxelTexDescription.usage = RHI::TextureUsage::Sampled;
         voxelTexDescription.filter = RHI::TextureFilter::Nearest;
