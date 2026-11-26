@@ -155,7 +155,7 @@ void main()
 
     
 
-    int maxLod = min(7, textureQueryLevels(u_VoxelGrid) - 1);
+    int maxLod = min(9, textureQueryLevels(u_VoxelGrid) - 1);
     int lod = maxLod;
     float t = 0.0;
 

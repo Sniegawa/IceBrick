@@ -20,14 +20,24 @@ struct TextureData
     std::vector<uint8_t> pixels; 
 };
 
+struct SubMesh
+{
+    uint32_t indexOffset = 0;
+    uint32_t indexCount = 0;
+    int32_t textureIndex = -1;
+    glm::vec3 baseColorFactor = glm::vec3(1.0f);
+};
+
+
 struct MeshData
 {
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
+    std::vector<SubMesh> subMeshes;
+    std::vector<TextureData> textures;
+
     glm::vec3 localMin = glm::vec3(std::numeric_limits<float>::max());
     glm::vec3 localMax = glm::vec3(std::numeric_limits<float>::lowest());
-
-    TextureData texture;
 };
 
 struct VoxelMesh
@@ -39,5 +49,5 @@ struct VoxelMesh
 MeshData Load(const std::filesystem::path& filepath);
 
 
-VoxelMesh Voxelize(MeshData data);
+VoxelMesh Voxelize(const MeshData& data);
 
