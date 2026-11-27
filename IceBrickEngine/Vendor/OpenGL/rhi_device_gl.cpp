@@ -1,5 +1,6 @@
 #include "rhi_device_gl.hpp"
 
+#include <array>
 #include <cstdint>
 #include <glad/gl.h>
 #include "Core/IOHelper.hpp"
