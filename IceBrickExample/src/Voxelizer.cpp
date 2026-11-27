@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <bit>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -21,6 +22,7 @@
 #include <fastgltf/tools.hpp>
 #include <fastgltf/util.hpp>
 #include <fastgltf/glm_element_traits.hpp>
+#include <ratio>
 #include <unordered_map>
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -263,6 +265,7 @@ static uint8_t Quantize5BitTo8(uint8_t c)
 
 VoxelMesh Voxelize(const MeshData& data)
 {
+    auto start = std::chrono::steady_clock::now();
     VoxelMesh vMesh;
     size_t voxels = 0;
 
@@ -320,6 +323,22 @@ VoxelMesh Voxelize(const MeshData& data)
 
             triMin = glm::clamp(triMin, glm::ivec3(0), glm::ivec3(GRID_SIZE - 1));
             triMax = glm::clamp(triMax, glm::ivec3(0), glm::ivec3(GRID_SIZE - 1));
+
+            // Quick check for dense meshes
+            if(triMin == triMax)
+            {
+                glm::vec2 uv = (V0.uv + V1.uv + V2.uv) * (1.0f / 3.0f);
+                glm::vec3 vtxColor = (V0.color + V1.color + V2.color) * (1.0f / 3.0f);
+                glm::vec3 texColor = tex ? SampleTexture(*tex, uv) : glm::vec3(1.0f);
+
+                size_t flatIndex = static_cast<size_t>(triMin.z) * GRID_SIZE * GRID_SIZE + static_cast<size_t>(triMin.y) * GRID_SIZE + static_cast<size_t>(triMin.x);
+
+                accum[flatIndex].colorSum += texColor * sub.baseColorFactor * vtxColor;
+                accum[flatIndex].count++;
+                voxels++;
+                continue;
+            }
+
 
             glm::vec3 bV0 = E0;
             glm::vec3 bV1 = -E2;
@@ -482,9 +501,9 @@ VoxelMesh Voxelize(const MeshData& data)
         vMesh.VoxelMesh[flatIndex].data = IceBrick::Renderer::Voxel::Pack(rCol, gCol, bCol, true);
     }
 
-    spdlog::info("Successfully voxelized mesh. {}",voxels);
-
-    //GenerateSupercoverMips(vMesh, GRID_SIZE, 8);
+    auto end = std::chrono::steady_clock::now();
+    auto timeTaken = std::chrono::duration<double, std::milli>(end - start).count();
+    spdlog::info("Successfully voxelized mesh. Voxels: {}, Time taken: {}ms",voxels, timeTaken);
 
     return vMesh;
 }

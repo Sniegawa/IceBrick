@@ -22,7 +22,7 @@ namespace IceBrick::Renderer
         glm::vec4 camRight;
     };
 
-    constexpr size_t GRID_SIZE = 1024;
+    constexpr size_t GRID_SIZE = 512;
 
     class VoxelRenderer
     {

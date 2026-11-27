@@ -89,19 +89,21 @@ int main(int argc, char** argv)
 
     unsigned int VoxelRenderNative = static_cast<unsigned int>(reinterpret_cast<uintptr_t>(device->GetTextureNativeHandle(renderer.GetOutTextureHandle())));
 
-    //MeshData meshData = Load("../../../IceBrickExample/src/MaterialsVariantsShoe.glb");
-    MeshData meshData = Load("/home/sniegawa/Downloads/sponza-png.glb");
+    {
+        MeshData meshData = Load("../../../IceBrickExample/src/MaterialsVariantsShoe.glb");
+        VoxelMesh voxelizedMesh = Voxelize(meshData);
 
-    VoxelMesh voxelizedMesh = Voxelize(meshData);
-
-    renderer.UploadVoxelData(voxelizedMesh.VoxelMesh, 0);
-    
+        renderer.UploadVoxelData(voxelizedMesh.VoxelMesh, 0);
+    }
     modifier.RebuildMips(volumeRef, glm::ivec3(0), volumeRef.dimensions - 1);
 
     Renderer::RaycastHit LastHit;
 
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
+    
+    float brushCooldown = 0.0f;
+
     while(!window.ShouldClose())
     {
         float currentFrame = static_cast<float>(glfwGetTime());
@@ -110,8 +112,10 @@ int main(int argc, char** argv)
 
         LastHit = renderer.getHitData();
         glfwPollEvents();
-       
-        if(isCameraActive)
+        
+        
+        brushCooldown += deltaTime;
+        if(isCameraActive && brushCooldown >= 0.06f)
         {
             bool carve = InputManager::IsKeyPressed(Key::E);
             bool place = InputManager::IsKeyPressed(Key::Q);
@@ -127,6 +131,7 @@ int main(int argc, char** argv)
                 brush.voxelData = Renderer::Voxel::Pack(to8Bit(RawBrushColor.r),to8Bit(RawBrushColor.g),to8Bit(RawBrushColor.b),true);
 
                 modifier.ApplyBrush(volumeRef, brush);
+                brushCooldown = 0.0f;
             }
         }
 
