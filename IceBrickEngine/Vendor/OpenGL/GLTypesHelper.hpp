@@ -7,6 +7,8 @@
 
 namespace IceBrick::RHI
 {
+    // TEXTURE
+
     inline GLenum TranslateInternalFormatToGL(TextureFormat format) {
         switch (format) {
             case TextureFormat::RGBA8_UNORM:   return GL_RGBA8;
@@ -85,4 +87,95 @@ namespace IceBrick::RHI
                 return 0;
         }
     }
+
+    // BUFFERS
+
+    inline GLbitfield TranslateMemoryAccessToGLFlags(BufferMemoryAccess access)
+    {
+        GLbitfield flags = 0;
+
+        switch(access)
+        {
+        case BufferMemoryAccess::GpuOnly:
+            flags = GL_DYNAMIC_STORAGE_BIT;
+            break;
+        case BufferMemoryAccess::CpuToGpu:
+            flags = GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
+            break;
+        case BufferMemoryAccess::GpuToCpu:
+            flags = GL_CLIENT_STORAGE_BIT | GL_MAP_READ_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
+            break;
+        }
+
+        return flags;
+    }
+
+    // Rendering
+    inline GLbitfield TranslateMemoryBarrierToGL(MemoryBarrierBits barrier)
+    {
+        GLbitfield flags = 0;
+        const auto mask = static_cast<uint32_t>(barrier);
+
+        if ((mask & static_cast<uint32_t>(MemoryBarrierBits::ShaderImageAccess)) != 0u)
+            flags |= GL_SHADER_IMAGE_ACCESS_BARRIER_BIT;
+
+        if ((mask & static_cast<uint32_t>(MemoryBarrierBits::TextureFetch)) != 0u)
+            flags |= GL_TEXTURE_FETCH_BARRIER_BIT;
+
+        if ((mask & static_cast<uint32_t>(MemoryBarrierBits::ShaderStorage)) != 0u)
+            flags |= GL_SHADER_STORAGE_BARRIER_BIT;
+
+        return flags;
+    }
+
+    // Graphics pipeline
+    inline GLenum TranslateCullModeToGL(CullMode mode)
+    {
+        switch (mode)
+        {
+            case CullMode::Front: return GL_FRONT;
+            case CullMode::Back:  return GL_BACK;
+            case CullMode::None:  return GL_NONE;
+        }
+        spdlog::error("Unknown CullMode in TranslateCullModeToGL");
+        return GL_BACK;
+    }
+
+    inline GLenum TranslateCompareOpToGL(CompareOp op)
+    {
+        switch (op)
+        {
+            case CompareOp::Less:        return GL_LESS;
+            case CompareOp::LessOrEqual: return GL_LEQUAL;
+            case CompareOp::Greater:     return GL_GREATER;
+            case CompareOp::Always:      return GL_ALWAYS;
+        }
+        spdlog::error("Unknown CompareOp in TranslateCompareOpToGL");
+        return GL_LESS;
+    }
+
+    struct GLVertexFormatInfo
+    {
+        GLint     count      = 3;
+        GLenum    type       = GL_FLOAT;
+        GLboolean normalized = GL_FALSE;
+    };
+
+    inline GLVertexFormatInfo TranslateVertexFormatToGL(VertexFormat format)
+    {
+        switch (format)
+        {
+            case VertexFormat::Float2: return { 2, GL_FLOAT, GL_FALSE };
+            case VertexFormat::Float3: return { 3, GL_FLOAT, GL_FALSE };
+            case VertexFormat::Float4: return { 4, GL_FLOAT, GL_FALSE };
+        }
+        spdlog::error("Unknown VertexFormat in TranslateVertexFormatToGL");
+        return { 3, GL_FLOAT, GL_FALSE };
+    }
+
+    constexpr bool IsDepthFormat(TextureFormat format)
+    {
+        return format == TextureFormat::Depth32_FLOAT;
+    }
+
 };

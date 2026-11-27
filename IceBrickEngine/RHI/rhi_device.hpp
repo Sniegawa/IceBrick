@@ -44,6 +44,17 @@ namespace IceBrick::RHI
         virtual void DispatchCompute(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) = 0;
         virtual void InsertImageMemoryBarrier(MemoryBarrierBits barrier) = 0;
 
+        virtual PipelineHandle CreateGraphicsPipeline(const GraphicsPipelineDescription& description) = 0;
+        virtual void BindGraphicsPipeline(PipelineHandle handle) = 0;
+
+
+        // Drawing
+        virtual void BeginRendering(const RenderingInfo& info) = 0;
+        virtual void EndRendering() = 0;
+
+        virtual void DrawIndexed(BufferHandle vertexBuffer, BufferHandle indexBuffer, uint32_t indexCount, uint32_t instanceCount = 1) = 0;
+
+
 
         virtual void ClearScreen(float r, float g, float b) = 0;
 

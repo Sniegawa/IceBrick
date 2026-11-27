@@ -3,6 +3,7 @@
 #include "RHI/rhi_device.hpp"
 #include "RHI/rhi_handles.hpp"
 #include <cstdlib>
+#include <optional>
 #include <vector>
 #include "RHI/rhi_types.hpp"
 #include "spdlog/spdlog.h"
@@ -36,7 +37,27 @@ namespace IceBrick::RHI
 
     struct GLPipelineNode : public GLNodeBase
     {
-        // no extra data
+        bool isGraphics = false;
+        
+        unsigned int vao = 0;
+        uint32_t vertexStride = 0;
+
+        CullMode cullMode = CullMode::Back;
+        bool depthTest = true;
+        bool depthWrite = true;
+        CompareOp depthCompare = CompareOp::Less;
+    };
+
+    struct GLStateCache
+    {
+        uint32_t program = 0;
+        uint32_t vao = 0;
+        std::optional<CullMode> cullMode;
+        std::optional<bool> depthTest;
+        std::optional<bool> depthWrite;
+        std::optional<CompareOp> depthCompare;
+
+        void Invalidate() { *this = {}; }
     };
     
     class GLRenderDevice final : public RenderDevice
@@ -72,11 +93,21 @@ namespace IceBrick::RHI
 
         // Pipelines
         virtual PipelineHandle CreateComputePipeline(std::string_view computeShaderSource) override;
+        virtual PipelineHandle CreateGraphicsPipeline(const GraphicsPipelineDescription& description)override;
         virtual void DestroyPipeline(PipelineHandle handle) override;
 
         virtual void BindComputePipeline(PipelineHandle handle) override;
+        virtual void BindGraphicsPipeline(PipelineHandle handle)override;
+
+        // Drawing
+        
         virtual void DispatchCompute(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) override;
         virtual void InsertImageMemoryBarrier(MemoryBarrierBits barrier) override;
+
+        virtual void BeginRendering(const RenderingInfo& info)override;
+        virtual void EndRendering()override;
+
+        virtual void DrawIndexed(BufferHandle vertexBuffer, BufferHandle indexBuffer, uint32_t indexCount, uint32_t instanceCount = 1)override;
 
 
 
@@ -94,7 +125,15 @@ namespace IceBrick::RHI
         std::vector<GLPipelineNode> m_PipelinePool;
         std::vector<uint32_t> m_FreePipelineIndices;
 
+        GLStateCache m_State;
+
+        unsigned int m_DynamicFBO = 0;
+        uint32_t m_BoundStride = 0;
+        uint32_t m_LastColorAttachmentCount = 0;
     private:
+
+        void ApplyGraphicsState(const GLPipelineNode& node);
+
         inline GLBufferNode& GetBufferNode(BufferHandle handle)
         {
             uint32_t index = handle.GetIndex();
