@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <bit>
+#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <fastgltf/core.hpp>
@@ -20,6 +21,7 @@
 #include <fastgltf/tools.hpp>
 #include <fastgltf/util.hpp>
 #include <fastgltf/glm_element_traits.hpp>
+#include <unordered_map>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <Vendor/stb/stb_image.h>
@@ -52,6 +54,19 @@ MeshData Load(const std::filesystem::path& filepath)
 
     stbi_set_flip_vertically_on_load(false);
     result.textures.resize(asset.images.size());
+    
+    std::vector<bool> usedAsBaseColor(asset.images.size(), false);
+    for(const auto& mat : asset.materials)
+    {
+        if(mat.pbrData.baseColorTexture.has_value())
+        {
+            const auto& tex = asset.textures[mat.pbrData.baseColorTexture->textureIndex];
+            if(tex.imageIndex.has_value())
+                usedAsBaseColor[*tex.imageIndex] = true;
+        }
+    }
+
+
     auto decodeFromMemory = [](const std::byte* bytes, size_t len, TextureData& outTex)
     {
         int w = 0;
@@ -81,6 +96,7 @@ MeshData Load(const std::filesystem::path& filepath)
 
     for(size_t imgIdx = 0; imgIdx < asset.images.size(); imgIdx++)
     {
+        if(!usedAsBaseColor[imgIdx]) continue;
         const auto& img = asset.images[imgIdx];
         std::visit(fastgltf::visitor{
             [](auto&){},
@@ -256,7 +272,8 @@ VoxelMesh Voxelize(const MeshData& data)
         glm::vec3 colorSum = glm::vec3(0.0f);
         uint32_t count = 0;
     };
-    std::vector<VoxelAccum> accum(GRID_SIZE * GRID_SIZE * GRID_SIZE);
+    std::unordered_map<size_t, VoxelAccum> accum;
+    accum.reserve(1 << 20); // Pre reserve around 1 MB
     vMesh.VoxelMesh.resize(GRID_SIZE * GRID_SIZE * GRID_SIZE, IceBrick::Renderer::Voxel{0});
 
     glm::vec3 size = data.localMax - data.localMin;
@@ -450,11 +467,9 @@ VoxelMesh Voxelize(const MeshData& data)
     }
 
 
-    for(size_t i = 0; i < accum.size(); i++)
+    for(const auto& [flatIndex, entry] : accum)
     {
-        if(accum[i].count == 0) continue;
-
-        glm::vec3 avgColor = accum[i].colorSum / static_cast<float>(accum[i].count);
+        glm::vec3 avgColor = entry.colorSum / static_cast<float>(entry.count);
 
         uint8_t rCol = static_cast<uint8_t>(glm::clamp(avgColor.r * 255.0f, 0.0f, 255.0f));
         uint8_t gCol = static_cast<uint8_t>(glm::clamp(avgColor.g * 255.0f, 0.0f, 255.0f));
@@ -464,7 +479,7 @@ VoxelMesh Voxelize(const MeshData& data)
         gCol = Quantize5BitTo8(gCol);
         bCol = Quantize5BitTo8(bCol);
 
-        vMesh.VoxelMesh[i].data = IceBrick::Renderer::Voxel::Pack(rCol, gCol, bCol, true);
+        vMesh.VoxelMesh[flatIndex].data = IceBrick::Renderer::Voxel::Pack(rCol, gCol, bCol, true);
     }
 
     spdlog::info("Successfully voxelized mesh. {}",voxels);

@@ -89,7 +89,9 @@ int main(int argc, char** argv)
 
     unsigned int VoxelRenderNative = static_cast<unsigned int>(reinterpret_cast<uintptr_t>(device->GetTextureNativeHandle(renderer.GetOutTextureHandle())));
 
-    MeshData meshData = Load("../../../IceBrickExample/src/MaterialsVariantsShoe.gl ");
+    //MeshData meshData = Load("../../../IceBrickExample/src/MaterialsVariantsShoe.glb");
+    MeshData meshData = Load("/home/sniegawa/Downloads/sponza-png.glb");
+
     VoxelMesh voxelizedMesh = Voxelize(meshData);
 
     renderer.UploadVoxelData(voxelizedMesh.VoxelMesh, 0);
