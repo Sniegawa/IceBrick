@@ -30,11 +30,21 @@ namespace IceBrick::Renderer
 
         voxelTexDescription.format = RHI::TextureFormat::R16_UINT;
         voxelTexDescription.type = RHI::TextureType::Texture3D;
-        voxelTexDescription.usage = RHI::TextureUsage::Sampled;
+        voxelTexDescription.usage = RHI::TextureUsage::Sampled | RHI::TextureUsage::Bindless;
         voxelTexDescription.filter = RHI::TextureFilter::Nearest;
         voxelTexDescription.generateMips = true;
 
         m_Volume.texture = device->CreateTexture(voxelTexDescription);
+
+        RHI::BufferDescription volumeHandleBufferDesc;
+        volumeHandleBufferDesc.usage = RHI::BufferUsage::UniformBuffer;
+        volumeHandleBufferDesc.sizeInBytes = sizeof(VolumeHandleUBO);
+        volumeHandleBufferDesc.memoryAccess = RHI::BufferMemoryAccess::CpuToGpu;
+        
+        m_VolumeHandleBuffer = device->CreateBuffer(volumeHandleBufferDesc);
+
+        VolumeHandleUBO data{ device->GetTextureBindlessHandle(m_Volume.texture) };
+        device->Upload(m_VolumeHandleBuffer, data);
 
         uint32_t mipLevels = static_cast<uint32_t>(std::floor(std::log2(GRID_SIZE))) + 1;
         m_Volume.mipLevels = mipLevels;
@@ -50,7 +60,7 @@ namespace IceBrick::Renderer
         m_VoxelPipeline = device->CreateComputePipeline(voxelSource);
 
         m_VoxelPipelineResources.SetStorageImage(0, m_OutputTexture);
-        m_VoxelPipelineResources.SetTexture(1, m_Volume.texture);
+        m_VoxelPipelineResources.SetUniformBuffer(1, m_VolumeHandleBuffer);
         m_VoxelPipelineResources.SetUniformBuffer(2, sceneDataBuffer);
         m_VoxelPipelineResources.SetStorageBuffer(3, m_RaycastHitBuffer);
     }

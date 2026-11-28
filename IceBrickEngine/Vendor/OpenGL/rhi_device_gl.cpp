@@ -19,7 +19,11 @@ namespace IceBrick::RHI
     {
         for(auto& t : m_TexturePool)
             if(t.active)
+            {        
+                if(t.bindlessHandle != 0)
+                    glMakeTextureHandleNonResidentARB(t.bindlessHandle);
                 glDeleteTextures(1,&t.glID);
+            }
 
         for(auto& b : m_BufferPool)
             if(b.active)
@@ -161,7 +165,18 @@ namespace IceBrick::RHI
         glTextureParameteri(node.glID, GL_TEXTURE_MIN_FILTER, TranslateFilterToGL(description.filter, description.generateMips)); 
         glTextureParameteri(node.glID, GL_TEXTURE_MAG_FILTER, TranslateFilterToGL(description.filter, false));
 
-   
+        if(HasFlag(description.usage, TextureUsage::Bindless))
+        {
+            if(glGetTextureHandleARB && glMakeTextureHandleResidentARB)
+            {
+                node.bindlessHandle = glGetTextureHandleARB(node.glID);
+                glMakeTextureHandleResidentARB(node.bindlessHandle);
+            }
+            else
+            {
+                spdlog::critical("GL_ARB_bindless_texture is not loaded in GLAD or unsupported");
+            }
+        }
 
 
         TextureHandle handle;
@@ -182,6 +197,12 @@ namespace IceBrick::RHI
         }
 
         GLTextureNode& node = m_TexturePool[index];
+            
+        if(node.bindlessHandle != 0)
+        {
+            glMakeTextureHandleNonResidentARB(node.bindlessHandle);
+            node.bindlessHandle = 0;
+        }
 
         glDeleteTextures(1, &node.glID);
         node.glID = 0;
@@ -199,6 +220,14 @@ namespace IceBrick::RHI
     {
         auto& node = GetTextureNode(handle);
         return reinterpret_cast<void*>(static_cast<uintptr_t>(node.glID));
+    }
+
+    uint64_t GLRenderDevice::GetTextureBindlessHandle(TextureHandle handle) 
+    {
+        const auto& node = GetTextureNode(handle);
+        if(node.bindlessHandle == 0)
+            spdlog::error("Requested bindless handle for a texture not created with Bindless flag");
+        return node.bindlessHandle;
     }
 
     void GLRenderDevice::SetBufferData(BufferHandle handle, const void* data, size_t size, uint32_t offset)

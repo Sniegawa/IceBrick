@@ -50,7 +50,8 @@ namespace IceBrick::RHI
         Sampled = 1 << 0,           // Read in shader via sampler2D/sampler3D
         Storage = 1 << 1,           // Read/Write in shader via image2D/image3D
         ColorAttachment = 1 << 2,   // Used as a Framebuffer output
-        DepthAttachment = 1 << 3    // Used as a Depth buffer
+        DepthAttachment = 1 << 3,   // Used as a Depth buffer
+        Bindless = 1 << 4           // Marks texture as bindless during creation and thus it's parameters like filtering
     };
 
     inline TextureUsage operator|(TextureUsage a, TextureUsage b)

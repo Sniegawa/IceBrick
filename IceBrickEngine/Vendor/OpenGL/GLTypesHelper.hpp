@@ -88,6 +88,11 @@ namespace IceBrick::RHI
         }
     }
 
+    constexpr bool HasFlag(TextureUsage value, TextureUsage flag)
+    {
+        return (static_cast<uint32_t>(value) & static_cast<uint32_t>(flag)) != 0;
+    }
+
     // BUFFERS
 
     inline GLbitfield TranslateMemoryAccessToGLFlags(BufferMemoryAccess access)

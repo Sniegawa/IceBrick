@@ -32,6 +32,8 @@ namespace IceBrick::RHI
         TextureFormat format;
         TextureType type;
 
+        uint64_t bindlessHandle = 0;
+
         uint32_t mipLevels = 1;
     };
 
@@ -77,6 +79,7 @@ namespace IceBrick::RHI
         virtual TextureHandle CreateTexture(const TextureDescription& description) override;
         virtual void DestroyTexture(TextureHandle handle) override;
         virtual void* GetTextureNativeHandle(TextureHandle handle) override;
+        virtual uint64_t GetTextureBindlessHandle(TextureHandle handle) override;
 
         // Data transfer
         virtual void SetBufferData(BufferHandle handle, const void* data, size_t size, uint32_t offset = 0) override;

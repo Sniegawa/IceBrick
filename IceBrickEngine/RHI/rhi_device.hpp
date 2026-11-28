@@ -23,6 +23,7 @@ namespace IceBrick::RHI
         virtual TextureHandle CreateTexture(const TextureDescription& desc) = 0;
         virtual void DestroyTexture(TextureHandle handle) = 0;
         virtual void* GetTextureNativeHandle(TextureHandle handle) = 0;
+        virtual uint64_t GetTextureBindlessHandle(TextureHandle handle) = 0;
 
         // Data transfer
         virtual void SetBufferData(BufferHandle handle, const void* data, size_t size, uint32_t offset = 0) = 0;

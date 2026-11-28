@@ -22,6 +22,13 @@ namespace IceBrick::Renderer
         glm::vec4 camRight;
     };
 
+    struct alignas(16) VolumeHandleUBO
+    {
+        uint64_t voxelGridHandle;
+        uint64_t pad = 0;
+    };
+
+
     constexpr size_t GRID_SIZE = 512;
 
     class VoxelRenderer
@@ -42,6 +49,7 @@ namespace IceBrick::Renderer
     private:
         VoxelVolumeRef m_Volume;
         RHI::TextureHandle m_OutputTexture;
+        RHI::BufferHandle m_VolumeHandleBuffer;
 
         RHI::BufferHandle m_RaycastHitBuffer;
 
